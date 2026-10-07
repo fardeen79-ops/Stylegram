@@ -177,6 +177,39 @@ export function unfollow(ctx: Ctx, followerId: number, username: string): void {
   ctx.db.prepare("DELETE FROM follows WHERE follower_id = ? AND followee_id = ?").run(followerId, target.id);
 }
 
+/** People the user follows, most recently active first (the avatar row at the top of the feed). */
+export function following(ctx: Ctx, userId: number) {
+  const rows = ctx.db
+    .prepare(
+      `SELECT u.* FROM follows f JOIN users u ON u.id = f.followee_id
+       WHERE f.follower_id = ?
+       ORDER BY (SELECT MAX(p.id) FROM posts p WHERE p.user_id = u.id) DESC NULLS LAST, f.created_at DESC
+       LIMIT 30`,
+    )
+    .all(userId) as UserRow[];
+  return rows.map((u) => userSummary(ctx, u));
+}
+
+/** Accounts to follow: popular people and brands the user doesn't follow yet. */
+export function suggestions(ctx: Ctx, userId: number, limit = 5) {
+  const rows = ctx.db
+    .prepare(
+      `SELECT u.*,
+              (SELECT COUNT(*) FROM follows f2 WHERE f2.followee_id = u.id
+                 AND f2.follower_id IN (SELECT followee_id FROM follows WHERE follower_id = @userId)) AS mutual,
+              (SELECT COUNT(*) FROM follows f3 WHERE f3.followee_id = u.id) AS followers
+       FROM users u
+       WHERE u.id != @userId AND u.id NOT IN (SELECT followee_id FROM follows WHERE follower_id = @userId)
+         AND EXISTS (SELECT 1 FROM posts p WHERE p.user_id = u.id)
+       ORDER BY mutual DESC, followers DESC, u.id DESC LIMIT @limit`,
+    )
+    .all({ userId, limit }) as (UserRow & { mutual: number; followers: number })[];
+  return rows.map((u) => ({
+    ...userSummary(ctx, u),
+    reason: u.mutual > 0 ? `Followed by ${u.mutual} you follow` : u.account_type === "BRAND" ? "Popular brand" : "Suggested for you",
+  }));
+}
+
 export function searchUsers(ctx: Ctx, q: string) {
   const like = `%${q.replace(/[%_]/g, "")}%`;
   const rows = ctx.db

@@ -166,6 +166,8 @@ export function postView(ctx: Ctx, postId: number, viewerId?: number) {
     })),
     likes: one("SELECT COUNT(*) AS n FROM likes WHERE post_id = ?", p.id).n,
     comments: one("SELECT COUNT(*) AS n FROM comments WHERE post_id = ?", p.id).n,
+    likedBy: likedBy(ctx, p.id, viewerId),
+    recentComments: recentComments(ctx, p.id),
     likedByMe: viewerId ? Boolean(ctx.db.prepare("SELECT 1 FROM likes WHERE post_id = ? AND user_id = ?").get(p.id, viewerId)) : false,
     savedByMe: viewerId ? Boolean(ctx.db.prepare("SELECT 1 FROM saves WHERE post_id = ? AND user_id = ?").get(p.id, viewerId)) : false,
     isMine: isOwner,
@@ -173,19 +175,43 @@ export function postView(ctx: Ctx, postId: number, viewerId?: number) {
   };
 }
 
+/** One person who liked the post, preferring someone the viewer follows ("Liked by amy and 12 others"). */
+function likedBy(ctx: Ctx, postId: number, viewerId?: number) {
+  const row = ctx.db
+    .prepare(
+      `SELECT l.user_id FROM likes l
+       WHERE l.post_id = @postId AND l.user_id != @viewer
+       ORDER BY EXISTS (SELECT 1 FROM follows f WHERE f.follower_id = @viewer AND f.followee_id = l.user_id) DESC,
+                l.created_at DESC
+       LIMIT 1`,
+    )
+    .get({ postId, viewer: viewerId ?? -1 }) as { user_id: number } | undefined;
+  return row ? userSummary(ctx, getUser(ctx, row.user_id)) : null;
+}
+
+/** The latest two comments, shown under a post in the feed. */
+function recentComments(ctx: Ctx, postId: number) {
+  const rows = ctx.db
+    .prepare("SELECT * FROM (SELECT * FROM comments WHERE post_id = ? ORDER BY id DESC LIMIT 2) ORDER BY id")
+    .all(postId) as { id: number; user_id: number; body: string; created_at: string }[];
+  return rows.map((c) => ({ id: c.id, author: userSummary(ctx, getUser(ctx, c.user_id)), body: c.body, createdAt: c.created_at }));
+}
+
 /** Lightweight card for profile / brand / explore grids. */
 function postCard(ctx: Ctx, row: { id: number }) {
-  const img = ctx.db.prepare("SELECT thumb_path FROM post_images WHERE post_id = ? ORDER BY position LIMIT 1").get(row.id) as {
+  const img = ctx.db.prepare("SELECT path, thumb_path FROM post_images WHERE post_id = ? ORDER BY position LIMIT 1").get(row.id) as {
+    path: string;
     thumb_path: string;
   };
   const counts = ctx.db
     .prepare(
       `SELECT (SELECT COUNT(*) FROM post_images WHERE post_id = @id) AS images,
               (SELECT COUNT(*) FROM tags WHERE post_id = @id AND status != 'REJECTED') AS tags,
-              (SELECT COUNT(*) FROM likes WHERE post_id = @id) AS likes`,
+              (SELECT COUNT(*) FROM likes WHERE post_id = @id) AS likes,
+              (SELECT COUNT(*) FROM comments WHERE post_id = @id) AS comments`,
     )
-    .get({ id: row.id }) as { images: number; tags: number; likes: number };
-  return { id: row.id, thumbUrl: mediaUrl(img.thumb_path), ...counts };
+    .get({ id: row.id }) as { images: number; tags: number; likes: number; comments: number };
+  return { id: row.id, thumbUrl: mediaUrl(img.thumb_path), imageUrl: mediaUrl(img.path), ...counts };
 }
 
 export interface Page {

@@ -51,12 +51,14 @@ import {
   authenticate,
   follow,
   getUser,
+  following,
   getUserByUsername,
   me,
   profile,
   registerUser,
   searchUsers,
   setAvatar,
+  suggestions,
   unfollow,
   updateProfile,
 } from "./services/users.js";
@@ -218,6 +220,14 @@ export function createApp(ctx: Ctx) {
 
   api.get("/me/saved", auth, (req, res) => {
     res.json(savedPosts(ctx, uid(req), parse(schemas.page, req.query)));
+  });
+
+  api.get("/me/following", auth, (req, res) => {
+    res.json(following(ctx, uid(req)));
+  });
+
+  api.get("/me/suggestions", auth, (req, res) => {
+    res.json(suggestions(ctx, uid(req)));
   });
 
   api.get("/users", (req, res) => {

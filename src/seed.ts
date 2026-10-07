@@ -1,6 +1,6 @@
 /**
  * Demo data: an admin, three verified (fictional) brands with catalogs, a few creators and
- * tagged outfit posts with generated illustrations. Run with `npm run seed` on an empty DB.
+ * tagged outfit posts using free Unsplash photos (downloaded at seed time). Run with `npm run seed` on an empty DB.
  * Every account's password is "password123".
  */
 import sharp from "sharp";
@@ -33,24 +33,59 @@ const brandAccount = (username: string, name: string, website: string, descripti
   return { user, slug: brand!.slug };
 };
 
-/** A simple flat illustration of an outfit, so the demo has images without stock photos. */
-async function outfit(bg: string, top: string, bottom: string, shoes: string, extra: "bag" | "glasses" | "hat"): Promise<Buffer> {
-  const extras = {
-    bag: `<rect x="560" y="560" width="150" height="130" rx="18" fill="#8b5e34"/><path d="M590 560 q45 -70 90 0" stroke="#5c3b1e" stroke-width="12" fill="none"/>`,
-    glasses: `<g fill="none" stroke="#111" stroke-width="10"><circle cx="372" cy="232" r="28"/><circle cx="452" cy="232" r="28"/><line x1="400" y1="232" x2="424" y2="232"/></g>`,
-    hat: `<ellipse cx="412" cy="170" rx="120" ry="22" fill="#2f2a26"/><rect x="342" y="105" width="140" height="70" rx="25" fill="#2f2a26"/>`,
-  };
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="824" height="1030" viewBox="0 0 824 1030">
-    <rect width="824" height="1030" fill="${bg}"/>
-    <circle cx="412" cy="235" r="78" fill="#e9b99a"/>
-    <path d="M262 360 q150 -60 300 0 l40 300 h-380z" fill="${top}"/>
-    <rect x="300" y="650" width="100" height="270" rx="20" fill="${bottom}"/>
-    <rect x="424" y="650" width="100" height="270" rx="20" fill="${bottom}"/>
-    <rect x="282" y="910" width="130" height="50" rx="22" fill="${shoes}"/>
-    <rect x="412" y="910" width="130" height="50" rx="22" fill="${shoes}"/>
-    ${extras[extra]}
+/**
+ * Demo photos from Unsplash (free to use under the Unsplash License, https://unsplash.com/license).
+ * They're downloaded when you seed, not stored in the repo. Product shots have their item roughly
+ * centred, so their tags sit at the centre; "look" photos open each carousel untagged.
+ */
+const PHOTOS = {
+  denimLook: { id: "ItqFmSxKnIg", alt: "Blue denim jeans and brown leather shoes" },
+  jeansHanger: { id: "EtOMMg1nSR8", alt: "Blue denim jeans on a clothes hanger", by: "Jason Leung" },
+  jeansRack: { id: "GbveIG8YKMk", alt: "Jeans hanging on a rail", by: "Waldemar Brandt" },
+  whiteSneakers: { id: "SQHcsZplFHI", alt: "Pair of white low-top sneakers" },
+  brownBag: { id: "tcVH_BwHtrc", alt: "Brown leather handbag on a white surface", by: "Irene Kredenets" },
+  brownBag2: { id: "pSVYyO-XlJk", alt: "Brown leather bag", by: "Irene Kredenets" },
+  sunglasses: { id: "llMiSJhJHBA", alt: "Sunglasses on a table", by: "Marios Gkortsilas" },
+  whiteTee: { id: "elbKS4DY21g", alt: "White crew-neck t-shirt" },
+  shirtFlatlay: { id: "YL7Y9uZ5O98", alt: "Button-up shirt, camera and leather boat shoes" },
+  blackFlatlay: { id: "RsJDUzKdBws", alt: "Folded black shirt, watch and sneakers" },
+  accessoriesFlatlay: { id: "QbNpxO0G27c", alt: "Men's accessories and clothing on green" },
+  outdoorFlatlay: { id: "h-wQrAU5yhw", alt: "Outdoor clothing and accessories flat lay" },
+  toteInHand: { id: "2_tjJJqsZms", alt: "Person holding a brown leather tote bag" },
+} as const;
+type PhotoKey = keyof typeof PHOTOS;
+
+const FALLBACK_COLORS = ["#e9e4dc", "#dfe9e4", "#fde2e4", "#e3e8f3", "#f3ead7", "#e6e1f0"];
+let fallbacks = 0;
+
+/** Plain placeholder used when a photo can't be downloaded (e.g. offline). */
+async function placeholder(label: string): Promise<Buffer> {
+  const bg = FALLBACK_COLORS[fallbacks++ % FALLBACK_COLORS.length];
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350">
+    <rect width="1080" height="1350" fill="${bg}"/>
+    <text x="540" y="675" font-family="sans-serif" font-size="44" fill="#555" text-anchor="middle">${label.replace(/[<&>]/g, "")}</text>
   </svg>`;
-  return sharp(Buffer.from(svg)).jpeg({ quality: 90 }).toBuffer();
+  return sharp(Buffer.from(svg)).jpeg({ quality: 85 }).toBuffer();
+}
+
+async function photo(key: PhotoKey): Promise<Buffer> {
+  const p = PHOTOS[key];
+  try {
+    const res = await fetch(`https://unsplash.com/photos/${p.id}/download?force=true`, {
+      redirect: "follow",
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    // Originals can be very large: shrink before the normal upload pipeline.
+    return await sharp(Buffer.from(await res.arrayBuffer()), { limitInputPixels: false })
+      .rotate()
+      .resize({ width: 1600, withoutEnlargement: true })
+      .jpeg({ quality: 90 })
+      .toBuffer();
+  } catch (err) {
+    console.warn(`  ! couldn't download photo ${p.id} (${(err as Error).message}); using a placeholder`);
+    return placeholder(p.alt);
+  }
 }
 
 const admin = registerUser(ctx, { username: "admin", email: "admin@example.com", password: PASSWORD, displayName: "Admin", accountType: "PERSONAL" }).user;
@@ -76,39 +111,46 @@ const sara = person("sara.wears", "Sara Okafor", "Colour, always.");
 for (const [a, b] of [[maya, leo], [maya, sara], [leo, maya], [sara, maya], [sara, leo]] as const) follow(ctx, a.id, b.username);
 for (const u of [maya, leo, sara]) follow(ctx, u.id, "northwind");
 
-async function post(userId: number, caption: string, art: Parameters<typeof outfit>, tags: TagInput[]) {
-  const img = await storeImage(ctx.config, await outfit(...art));
-  return createPost(ctx, userId, [img], caption, tags);
+/** A tag at the centre of a single-item product shot. */
+const centre = (image: number, t: Omit<TagInput, "image" | "x" | "y">): TagInput => ({ image, x: 0.5, y: 0.5, ...t });
+
+async function post(userId: number, caption: string, photos: PhotoKey[], tags: TagInput[]) {
+  const images = [];
+  for (const key of photos) images.push(await storeImage(ctx.config, await photo(key)));
+  return createPost(ctx, userId, images, caption, tags);
 }
 
-const p1 = await post(maya.id, "Double denim, no regrets.", ["#f3e7d9", "#3b5b8c", "#2e4a74", "#f5f5f5", "bag"], [
-  { image: 0, x: 0.5, y: 0.45, label: "Trucker jacket", category: "outerwear", brandSlug: northwind.slug, productId: trucker.id },
-  { image: 0, x: 0.43, y: 0.75, label: "Straight jeans", category: "bottom", brandSlug: northwind.slug, productId: straight.id },
-  { image: 0, x: 0.38, y: 0.9, label: "White sneakers", category: "shoes", brandSlug: kite.slug, productId: runner.id },
-  { image: 0, x: 0.77, y: 0.6, label: "Leather tote", category: "bag", brandSlug: mare.slug, productId: tote.id },
+console.log("Downloading demo photos from Unsplash…");
+const p1 = await post(maya.id, "Double denim, no regrets. Swipe for the pieces 👉", ["denimLook", "jeansHanger", "whiteSneakers", "brownBag"], [
+  centre(1, { label: "Straight jeans", category: "bottom", brandSlug: northwind.slug, productId: straight.id }),
+  centre(2, { label: "White sneakers", category: "shoes", brandSlug: kite.slug, productId: runner.id }),
+  centre(3, { label: "Leather tote", category: "bag", brandSlug: mare.slug, productId: tote.id }),
 ]);
-const p2 = await post(leo.id, "Linen season in Lisbon ☀️", ["#dfe9e4", "#d8c3a5", "#4a4a48", "#111111", "glasses"], [
-  { image: 0, x: 0.5, y: 0.45, label: "Linen overshirt", category: "top", brandSlug: mare.slug, productId: linen.id },
-  { image: 0, x: 0.5, y: 0.225, label: "Round sunglasses", category: "eyewear", brandName: "Lumen Optics", url: "https://lumen.example.com/round" },
-  { image: 0, x: 0.6, y: 0.9, label: "Black court shoes", category: "shoes", brandSlug: kite.slug, productId: court.id },
+const p2 = await post(leo.id, "Linen season in Lisbon ☀️ #summer", ["shirtFlatlay", "sunglasses", "whiteTee"], [
+  centre(1, { label: "Round sunglasses", category: "eyewear", brandName: "Lumen Optics", url: "https://lumen.example.com/round" }),
+  centre(2, { label: "Heavyweight white tee", category: "top", brandName: "Common Thread" }),
 ]);
-const p3 = await post(sara.id, "Sunday in colour.", ["#fde2e4", "#e76f51", "#264653", "#e9c46a", "hat"], [
-  { image: 0, x: 0.5, y: 0.15, label: "Wool fedora", category: "hat", brandName: "Hatter & Co" },
-  { image: 0, x: 0.5, y: 0.47, label: "Orange knit", category: "top", brandName: "Second-hand" },
-  { image: 0, x: 0.5, y: 0.75, label: "Teal trousers", category: "bottom", brandSlug: northwind.slug },
+const p3 = await post(sara.id, "Packed for the weekend.", ["accessoriesFlatlay", "brownBag2"], [
+  centre(1, { label: "Brown leather bag", category: "bag", brandSlug: mare.slug }),
 ]);
-await post(northwind.user.id, "The Trucker, broken in over a year.", ["#e9eef5", "#3b5b8c", "#1f3556", "#7a4b2a", "hat"], [
-  { image: 0, x: 0.5, y: 0.45, label: "Trucker jacket", category: "outerwear", brandSlug: northwind.slug, productId: trucker.id },
-  { image: 0, x: 0.43, y: 0.75, label: "Straight jeans", category: "bottom", brandSlug: northwind.slug, productId: straight.id },
+await post(northwind.user.id, "Restock day: the Straight Jean is back in every wash.", ["jeansRack"], [
+  centre(0, { label: "Straight jeans", category: "bottom", brandSlug: northwind.slug, productId: straight.id }),
 ]);
+await post(leo.id, "All black everything.", ["blackFlatlay"], []);
+await post(sara.id, "Errands with my favourite tote", ["toteInHand"], [
+  centre(0, { label: "Market tote", category: "bag", brandSlug: mare.slug, productId: tote.id }),
+]);
+await post(maya.id, "Trail day essentials 🌲 #outdoors", ["outdoorFlatlay"], []);
+void trucker; void linen; void court;
 
 // Brand review: Northwind confirms Maya's tags.
 ctx.db.prepare("UPDATE tags SET status = 'CONFIRMED', reviewed_at = ? WHERE post_id = ? AND brand_id = (SELECT id FROM brands WHERE slug = ?)")
   .run(new Date().toISOString(), p1, northwind.slug);
 
 for (const [u, postId] of [[leo, p1], [sara, p1], [maya, p2], [sara, p2], [maya, p3]] as const) setLike(ctx, u.id, postId, true);
-addComment(ctx, leo.id, p1, "That jacket is perfect 🔥");
+addComment(ctx, leo.id, p1, "Those jeans are perfect 🔥");
 addComment(ctx, sara.id, p1, "Need that tote!");
 addComment(ctx, maya.id, p2, "Linen king.");
 
+if (fallbacks) console.warn(`${fallbacks} photo(s) couldn't be downloaded and were replaced with placeholders.`);
 console.log(`Seeded ${config.dbPath}. Log in as maya.styles, leo_fits, sara.wears, northwind (brand) or admin — password: ${PASSWORD}`);

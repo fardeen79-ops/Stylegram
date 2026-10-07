@@ -16,6 +16,26 @@ npm test
 The seed creates `maya.styles`, `leo_fits`, `sara.wears`, the brand account `northwind` and `admin`. Every
 password is `password123`. The demo brands (Northwind Denim, Atelier Mare, Kite Footwear) are made up.
 
+The demo posts use real photos from [Unsplash](https://unsplash.com), which are free to use under the
+[Unsplash License](https://unsplash.com/license). `npm run seed` downloads them, so it needs an internet
+connection. Any photo that can't be downloaded is replaced with a plain placeholder. Each post opens with an
+untagged "full look" photo, followed by single-product shots tagged at the item. The photo list, with
+Unsplash IDs and photographers, is in `src/seed.ts`.
+
+## Look and feel
+
+The web app follows the familiar Instagram layout, with its own name, logo and icons:
+- **Navigation:** a left sidebar on desktop, which shrinks to icons only on tablets, and a bottom tab bar plus
+  top bar on phones.
+- **Feed:** a row of people you follow with gradient rings, and a "Suggested for you" column.
+- **Posts:** swipeable carousels with dots, and double-tap to like with a heart burst. Product tags appear when
+  you tap the photo, and a "Shop the look" strip under each post opens a product sheet.
+- **Profiles and brand pages:** a 3-column grid with like and comment counts on hover. Explore uses a mixed
+  grid with large tiles, plus search and category chips.
+- **Post page and Create:** on desktop, the post page shows the photo next to its comments. Create is a
+  "Create new post" flow with drag-and-drop and tap-to-tag.
+- **Everything else:** bottom-sheet menus, light and dark mode, and @mentions and #hashtags as links.
+
 ## How it works
 
 **For people**

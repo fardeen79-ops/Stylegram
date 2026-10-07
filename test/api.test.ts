@@ -313,3 +313,40 @@ describe("feed, explore and engagement", () => {
     expect((await t.http.get("/api/users/amy").expect(200)).body.avatarUrl).toBe(res.body.avatarUrl);
   });
 });
+
+describe("social context", () => {
+  it("shows who liked a post (preferring people you follow) and the latest comments", async () => {
+    const t = setup();
+    const amy = await t.user("amy");
+    const ben = await t.user("ben");
+    const cat = await t.user("cat");
+    const viewer = await t.user("viewer");
+    await viewer.put("/api/users/ben/follow").expect(204);
+    const p = (await t.post(amy).expect(201)).body;
+    await ben.put(`/api/posts/${p.id}/like`).expect(204);
+    t.advance(1000);
+    await cat.put(`/api/posts/${p.id}/like`).expect(204);
+    for (const [u, body] of [[ben, "one"], [cat, "two"], [ben, "three"]] as const) {
+      await u.post(`/api/posts/${p.id}/comments`).send({ body }).expect(201);
+    }
+    const view = (await viewer.get(`/api/posts/${p.id}`).expect(200)).body;
+    expect(view.likedBy.username).toBe("ben"); // followed beats more recent
+    expect((await t.http.get(`/api/posts/${p.id}`).expect(200)).body.likedBy.username).toBe("cat"); // most recent
+    expect(view.recentComments.map((c: { body: string }) => c.body)).toEqual(["two", "three"]);
+  });
+
+  it("lists who you follow and suggests accounts with posts", async () => {
+    const t = setup();
+    const amy = await t.user("amy");
+    const ben = await t.user("ben");
+    const cat = await t.user("cat");
+    await t.user("lurker"); // no posts, never suggested
+    await t.post(ben).expect(201);
+    await t.post(cat).expect(201);
+    await ben.put("/api/users/cat/follow").expect(204);
+    await amy.put("/api/users/ben/follow").expect(204);
+    expect((await amy.get("/api/me/following").expect(200)).body.map((u: { username: string }) => u.username)).toEqual(["ben"]);
+    const sugg = (await amy.get("/api/me/suggestions").expect(200)).body;
+    expect(sugg).toEqual([expect.objectContaining({ username: "cat", reason: "Followed by 1 you follow" })]);
+  });
+});
