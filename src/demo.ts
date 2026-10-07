@@ -1,5 +1,5 @@
 /**
- * Demo content: three verified (fictional) brands with catalogs, a few creators, follows,
+ * Demo content for the UAE launch: four verified (fictional) UAE brands with AED catalogs, a few creators, follows,
  * likes, comments and tagged outfit posts using free Unsplash photos downloaded at seed time.
  * Used by `npm run seed` locally and by SEED_DEMO=true on a fresh production deploy.
  */
@@ -10,7 +10,7 @@ import { createProduct } from "./services/brands.js";
 import { addComment, createPost, setLike, type TagInput } from "./services/posts.js";
 import { follow, registerUser, updateProfile } from "./services/users.js";
 
-export const DEMO_USERNAMES = ["maya.styles", "leo_fits", "sara.wears", "northwind", "ateliermare", "kitefootwear"];
+export const DEMO_USERNAMES = ["noor.styles", "omar.fits", "priya.wears", "creekdenim", "dunefootwear", "alseefleather", "saffronsand"];
 
 /**
  * Demo photos from Unsplash (free to use under the Unsplash License, https://unsplash.com/license).
@@ -31,6 +31,7 @@ const PHOTOS = {
   accessoriesFlatlay: { id: "QbNpxO0G27c", alt: "Men's accessories and clothing on green" },
   outdoorFlatlay: { id: "h-wQrAU5yhw", alt: "Outdoor clothing and accessories flat lay" },
   toteInHand: { id: "2_tjJJqsZms", alt: "Person holding a brown leather tote bag" },
+  abaya: { id: "MzImhIYa3-I", alt: "Black abaya with floral embellishments and lace cuffs", by: "Abdul Raheem Kannath" },
 } as const;
 type PhotoKey = keyof typeof PHOTOS;
 
@@ -104,26 +105,39 @@ export async function seedDemo(ctx: Ctx, opts: { password: string; log?: Pick<Co
   };
 
 
-  const northwind = brandAccount("northwind", "Northwind Denim", "https://northwind.example.com", "Raw selvedge denim, made to fade.");
-  const mare = brandAccount("ateliermare", "Atelier Mare", "https://mare.example.com", "Linen and leather goods from the coast.");
-  const kite = brandAccount("kitefootwear", "Kite Footwear", "https://kite.example.com", "Everyday sneakers.");
+  const creek = brandAccount("creekdenim", "Creek Denim", "https://creekdenim.example", "Denim cut and finished in Dubai.");
+  const dune = brandAccount("dunefootwear", "Dune Footwear", "https://dunefootwear.example", "Everyday sneakers and sandals made for UAE summers.");
+  const alseef = brandAccount("alseefleather", "Al Seef Leather", "https://alseef.example", "Leather bags and small goods, designed in Sharjah.");
+  const saffron = brandAccount("saffronsand", "Saffron & Sand", "https://saffronsand.example", "Abayas, kaftans and shaylas for every occasion.");
+  // Brands running a Stylegram commission program (so Shop links show the commission disclosure).
+  ctx.db.prepare("UPDATE brands SET commission_bps = 1000 WHERE slug IN (?, ?)").run(creek.slug, alseef.slug);
+  ctx.db.prepare("UPDATE brands SET commission_bps = 1200 WHERE slug = ?").run(saffron.slug);
 
-  const p = (owner: number, name: string, path: string, price: number, category: Parameters<typeof createProduct>[2]["category"]) =>
-    createProduct(ctx, owner, { name, url: `https://${path}`, priceCents: price * 100, currency: "USD", category });
-  const trucker = p(northwind.user.id, "Trucker Jacket – Indigo", "northwind.example.com/trucker", 148, "outerwear");
-  const straight = p(northwind.user.id, "Straight Jean – Rinse", "northwind.example.com/straight", 128, "bottom");
-  p(northwind.user.id, "Denim Shirt", "northwind.example.com/shirt", 98, "top");
-  const tote = p(mare.user.id, "Market Tote", "mare.example.com/tote", 210, "bag");
-  const linen = p(mare.user.id, "Linen Overshirt – Sand", "mare.example.com/overshirt", 165, "top");
-  const runner = p(kite.user.id, "Runner 01 – White", "kite.example.com/runner-01", 120, "shoes");
-  const court = p(kite.user.id, "Court Low – Black", "kite.example.com/court-low", 110, "shoes");
+  // All prices in AED (whole dirhams).
+  const p = (owner: number, name: string, url: string, aed: number, category: Parameters<typeof createProduct>[2]["category"]) =>
+    createProduct(ctx, owner, { name, url, priceCents: aed * 100, currency: "AED", category });
+  const straight = p(creek.user.id, "Straight Jean – Rinse", "https://creekdenim.example/straight", 349, "bottom");
+  p(creek.user.id, "Trucker Jacket – Indigo", "https://creekdenim.example/trucker", 459, "outerwear");
+  p(creek.user.id, "Denim Shirt", "https://creekdenim.example/shirt", 299, "top");
+  const runner = p(dune.user.id, "Dune Runner – White", "https://dunefootwear.example/runner", 449, "shoes");
+  p(dune.user.id, "Court Low – Black", "https://dunefootwear.example/court-low", 399, "shoes");
+  p(dune.user.id, "Desert Slide – Sand", "https://dunefootwear.example/slide", 199, "shoes");
+  const tote = p(alseef.user.id, "Market Tote – Tan", "https://alseef.example/market-tote", 790, "bag");
+  const bag = p(alseef.user.id, "Weekender – Chestnut", "https://alseef.example/weekender", 1150, "bag");
+  p(alseef.user.id, "Card Holder", "https://alseef.example/card-holder", 180, "accessory");
+  const abaya = p(saffron.user.id, "Midnight Crepe Abaya", "https://saffronsand.example/midnight-abaya", 650, "abaya");
+  p(saffron.user.id, "Linen Shayla – Sand", "https://saffronsand.example/linen-shayla", 120, "scarf");
+  p(saffron.user.id, "Kaftan Dress – Rose", "https://saffronsand.example/kaftan-rose", 480, "dress");
 
-  const maya = person("maya.styles", "Maya Chen", "Thrift + denim forever 🧵");
-  const leo = person("leo_fits", "Leo Martins", "Menswear notes from Lisbon");
-  const sara = person("sara.wears", "Sara Okafor", "Colour, always.");
+  const noor = person("noor.styles", "Noor Al Hashimi", "Dubai · modest fashion & weekend souk runs");
+  const omar = person("omar.fits", "Omar Haddad", "Abu Dhabi · menswear, kept minimal");
+  const priya = person("priya.wears", "Priya Menon", "Sharjah · colour, always");
 
-  for (const [a, b] of [[maya, leo], [maya, sara], [leo, maya], [sara, maya], [sara, leo]] as const) follow(ctx, a.id, b.username);
-  for (const u of [maya, leo, sara]) follow(ctx, u.id, "northwind");
+  for (const [a, b] of [[noor, omar], [noor, priya], [omar, noor], [priya, noor], [priya, omar]] as const) follow(ctx, a.id, b.username);
+  for (const u of [noor, omar, priya]) {
+    follow(ctx, u.id, "creekdenim");
+    follow(ctx, u.id, "saffronsand");
+  }
 
   /** A tag at the centre of a single-item product shot. */
   const centre = (image: number, t: Omit<TagInput, "image" | "x" | "y">): TagInput => ({ image, x: 0.5, y: 0.5, ...t });
@@ -135,36 +149,42 @@ export async function seedDemo(ctx: Ctx, opts: { password: string; log?: Pick<Co
   }
 
   log.log("Downloading demo photos from Unsplash…");
-  const p1 = await post(maya.id, "Double denim, no regrets. Swipe for the pieces 👉", ["denimLook", "jeansHanger", "whiteSneakers", "brownBag"], [
-    centre(1, { label: "Straight jeans", category: "bottom", brandSlug: northwind.slug, productId: straight.id }),
-    centre(2, { label: "White sneakers", category: "shoes", brandSlug: kite.slug, productId: runner.id }),
-    centre(3, { label: "Leather tote", category: "bag", brandSlug: mare.slug, productId: tote.id }),
+  const p1 = await post(noor.id, "Denim on denim for a cool Dubai evening 🌙 Swipe for the pieces 👉 #dubaifashion", ["denimLook", "jeansHanger", "whiteSneakers", "brownBag"], [
+    centre(1, { label: "Straight jeans", category: "bottom", brandSlug: creek.slug, productId: straight.id }),
+    centre(2, { label: "White sneakers", category: "shoes", brandSlug: dune.slug, productId: runner.id }),
+    centre(3, { label: "Leather tote", category: "bag", brandSlug: alseef.slug, productId: tote.id }),
   ]);
-  const p2 = await post(leo.id, "Linen season in Lisbon ☀️ #summer", ["shirtFlatlay", "sunglasses", "whiteTee"], [
-    centre(1, { label: "Round sunglasses", category: "eyewear", brandName: "Lumen Optics", url: "https://lumen.example.com/round" }),
-    centre(2, { label: "Heavyweight white tee", category: "top", brandName: "Common Thread" }),
+  const p2 = await post(omar.id, "Weekend on Saadiyat ☀️ #abudhabi", ["shirtFlatlay", "sunglasses", "whiteTee"], [
+    centre(1, { label: "Round sunglasses", category: "eyewear", brandName: "Marina Optics", url: "https://marinaoptics.example/round" }),
+    centre(2, { label: "Heavyweight white tee", category: "top", brandName: "Jumeirah Basics" }),
   ]);
-  const p3 = await post(sara.id, "Packed for the weekend.", ["accessoriesFlatlay", "brownBag2"], [
-    centre(1, { label: "Brown leather bag", category: "bag", brandSlug: mare.slug }),
+  const p3 = await post(priya.id, "Packed for a staycation in Hatta 🏔️", ["accessoriesFlatlay", "brownBag2"], [
+    centre(1, { label: "Leather weekender", category: "bag", brandSlug: alseef.slug, productId: bag.id }),
   ]);
-  await post(northwind.user.id, "Restock day: the Straight Jean is back in every wash.", ["jeansRack"], [
-    centre(0, { label: "Straight jeans", category: "bottom", brandSlug: northwind.slug, productId: straight.id }),
+  await post(creek.user.id, "Restock day: the Straight Jean is back in every wash. Free delivery across the UAE.", ["jeansRack"], [
+    centre(0, { label: "Straight jeans", category: "bottom", brandSlug: creek.slug, productId: straight.id }),
   ]);
-  await post(leo.id, "All black everything.", ["blackFlatlay"], []);
-  await post(sara.id, "Errands with my favourite tote", ["toteInHand"], [
-    centre(0, { label: "Market tote", category: "bag", brandSlug: mare.slug, productId: tote.id }),
+  await post(omar.id, "All black for Alserkal Avenue.", ["blackFlatlay"], []);
+  await post(priya.id, "Souk run in Deira with my favourite tote", ["toteInHand"], [
+    centre(0, { label: "Market tote", category: "bag", brandSlug: alseef.slug, productId: tote.id }),
   ]);
-  await post(maya.id, "Trail day essentials 🌲 #outdoors", ["outdoorFlatlay"], []);
-  void trucker; void linen; void court;
+  const p7 = await post(noor.id, "Eid edit ✨ The Midnight Crepe abaya from @saffronsand #modestfashion #uae", ["abaya"], [
+    centre(0, { label: "Black abaya", category: "abaya", brandSlug: saffron.slug, productId: abaya.id }),
+  ]);
+  await post(noor.id, "Desert drive essentials 🌵 #uae", ["outdoorFlatlay"], []);
 
-  // Brand review: Northwind confirms Maya's tags.
-  ctx.db.prepare("UPDATE tags SET status = 'CONFIRMED', reviewed_at = ? WHERE post_id = ? AND brand_id = (SELECT id FROM brands WHERE slug = ?)")
-    .run(new Date().toISOString(), p1, northwind.slug);
+  // Brand review: Creek Denim and Saffron & Sand confirm Noor's tags.
+  ctx.db
+    .prepare("UPDATE tags SET status = 'CONFIRMED', reviewed_at = ? WHERE post_id IN (?, ?) AND brand_id IN (SELECT id FROM brands WHERE slug IN (?, ?))")
+    .run(new Date().toISOString(), p1, p7, creek.slug, saffron.slug);
 
-  for (const [u, postId] of [[leo, p1], [sara, p1], [maya, p2], [sara, p2], [maya, p3]] as const) setLike(ctx, u.id, postId, true);
-  addComment(ctx, leo.id, p1, "Those jeans are perfect 🔥");
-  addComment(ctx, sara.id, p1, "Need that tote!");
-  addComment(ctx, maya.id, p2, "Linen king.");
+  for (const [u, postId] of [[omar, p1], [priya, p1], [noor, p2], [priya, p2], [noor, p3], [priya, p7], [omar, p7]] as const) {
+    setLike(ctx, u.id, postId, true);
+  }
+  addComment(ctx, omar.id, p1, "Those jeans are perfect 🔥");
+  addComment(ctx, priya.id, p1, "Need that tote!");
+  addComment(ctx, noor.id, p2, "Saadiyat sunsets never miss.");
+  addComment(ctx, priya.id, p7, "Love this abaya 😍 the detail on the cuffs!");
 
   if (fallbacks) log.warn(`${fallbacks} photo(s) couldn't be downloaded and were replaced with placeholders.`);
 }

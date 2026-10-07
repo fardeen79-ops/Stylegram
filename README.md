@@ -13,8 +13,21 @@ npm run dev      # http://localhost:3002
 npm test
 ```
 
-The seed creates `maya.styles`, `leo_fits`, `sara.wears`, the brand account `northwind` and `admin`. Every
-password is `password123`. The demo brands (Northwind Denim, Atelier Mare, Kite Footwear) are made up.
+The seed creates the creators `noor.styles` (Dubai), `omar.fits` (Abu Dhabi) and `priya.wears` (Sharjah), the
+brand account `creekdenim`, and `admin`. Locally, every password is `password123`. The demo brands (Creek Denim,
+Dune Footwear, Al Seef Leather, Saffron & Sand) are made up, and their catalogs are priced in AED.
+
+## Built for the UAE
+
+- **Currency and formatting:** prices, commissions and earnings default to **AED**. Numbers, prices and dates
+  use UAE (`en-AE`) formatting, e.g. "AED 1,250.00". Brands can still list a product in another currency.
+  Set `DEFAULT_CURRENCY`, `MARKET_COUNTRY` or `MARKET_LOCALE` to launch somewhere else.
+- **Modest and traditional wear:** `abaya`, `kandura` and `scarf` (shayla, hijab, ghutra) are first-class
+  categories in tagging and Explore. The AI recognises them too.
+- **Brand verification:** brands can give their **UAE trade licence number** when they sign up or claim a
+  page. Admins see it in the verification queue.
+- **Demo content:** Dubai, Abu Dhabi and Sharjah creators, UAE brands with AED prices, and two brands
+  running commission programs (10–12%).
 
 The demo posts use real photos from [Unsplash](https://unsplash.com), which are free to use under the
 [Unsplash License](https://unsplash.com/license). `npm run seed` downloads them, so it needs an internet
@@ -75,7 +88,7 @@ tagged the item.
    ```bash
    curl -X POST https://<your-app>/api/v1/conversions \
      -H "Authorization: Bearer sgk_..." -H "Content-Type: application/json" \
-     -d '{"clickId":"sgc_...","orderId":"1001","amount":"89.90","currency":"USD"}'
+     -d '{"clickId":"sgc_...","orderId":"1001","amount":"349.00","currency":"AED"}'
    ```
    Refunds go to `POST /api/v1/conversions/<orderId>/reverse`. Reports are idempotent per order id, so
    sending one twice is harmless.
@@ -220,7 +233,7 @@ A tag in `POST /posts` looks like this:
 
 ```json
 { "image": 0, "x": 0.42, "y": 0.35, "label": "Denim jacket", "category": "outerwear",
-  "brandSlug": "northwind-denim", "productId": 12 }
+  "brandSlug": "creek-denim", "productId": 12 }
 ```
 
 To tag a brand by name instead, use `"brandName": "Some Brand"`. The brand is found, or created as a
@@ -240,6 +253,8 @@ height.
 | `JWT_SECRET` | generated once and kept in `<DATA_DIR>/.jwt-secret` | Set it yourself if you prefer; tokens stay valid across restarts either way |
 | `ADMIN_USERNAMES` | `admin` | **Development only**: these usernames become admins when they register |
 | `UTM_SOURCE` | `stylegram` | |
+| `DEFAULT_CURRENCY` | `AED` | Currency for new products and examples |
+| `MARKET_COUNTRY`, `MARKET_LOCALE` | `AE`, `en-AE` | Launch market |
 | `ANTHROPIC_API_KEY` | none | Turns on photo safety checks and item suggestions |
 | `AI_MODEL` | `claude-opus-5-5` | Vision model |
 | `AI_ANALYSES_PER_HOUR` | `60` | Suggestion requests per user per hour |

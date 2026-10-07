@@ -149,7 +149,7 @@ export function createProduct(ctx: Ctx, userId: number, input: ProductInput): Pr
     .prepare(
       "INSERT INTO products (brand_id, name, url, price_cents, currency, category, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
     )
-    .run(b.id, input.name, input.url, input.priceCents ?? null, input.currency ?? "USD", input.category, ctx.now().toISOString());
+    .run(b.id, input.name, input.url, input.priceCents ?? null, input.currency ?? ctx.config.market.currency, input.category, ctx.now().toISOString());
   return getProduct(ctx, Number(info.lastInsertRowid));
 }
 
@@ -306,16 +306,16 @@ export function adminQueue(ctx: Ctx, userId: number) {
       `SELECT b.*, u.username FROM brands b JOIN users u ON u.id = b.owner_id
        WHERE b.verified = 0 ORDER BY b.created_at`,
     )
-    .all() as (BrandRow & { username: string })[];
+    .all() as (BrandRow & { username: string; trade_licence: string | null })[];
   const claims = ctx.db
     .prepare(
-      `SELECT c.id, c.message, c.created_at, b.slug, b.name, u.username, u.email FROM brand_claims c
+      `SELECT c.id, c.message, c.trade_licence AS tradeLicence, c.created_at, b.slug, b.name, u.username, u.email FROM brand_claims c
        JOIN brands b ON b.id = c.brand_id JOIN users u ON u.id = c.user_id
        WHERE c.status = 'PENDING' ORDER BY c.created_at`,
     )
     .all();
   return {
-    brandsToVerify: unverified.map((b) => ({ ...brandSummary(b), website: b.website, owner: b.username })),
+    brandsToVerify: unverified.map((b) => ({ ...brandSummary(b), website: b.website, owner: b.username, tradeLicence: b.trade_licence })),
     claims,
   };
 }

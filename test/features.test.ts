@@ -224,9 +224,33 @@ describe("database migrations", () => {
     db.prepare("INSERT INTO brands (slug, name, created_at) VALUES ('old', 'Old Brand', '2026-01-01')").run();
     migrate(db);
     migrate(db); // idempotent
-    expect(db.pragma("user_version", { simple: true })).toBe(1);
-    const brand = db.prepare("SELECT slug, commission_bps, attribution_days FROM brands").get();
-    expect(brand).toEqual({ slug: "old", commission_bps: null, attribution_days: 30 });
+    expect(db.pragma("user_version", { simple: true })).toBe(2);
+    const brand = db.prepare("SELECT slug, commission_bps, attribution_days, trade_licence FROM brands").get();
+    expect(brand).toEqual({ slug: "old", commission_bps: null, attribution_days: 30, trade_licence: null });
     expect(db.prepare("SELECT COUNT(*) AS n FROM conversions").get()).toEqual({ n: 0 });
+  });
+});
+
+describe("UAE market", () => {
+  it("prices products in AED by default and offers modest-wear categories", async () => {
+    const t = setup();
+    expect((await t.http.get("/api/market").expect(200)).body).toMatchObject({ country: "AE", currency: "AED", locale: "en-AE" });
+    expect((await t.http.get("/api/categories").expect(200)).body).toEqual(expect.arrayContaining(["abaya", "kandura", "scarf"]));
+    const admin = await t.user("admin");
+    const brand = await t.brand("saffron", "Saffron & Sand", admin);
+    const p = (await brand.post("/api/brand/products").send({ name: "Midnight Crepe Abaya", url: "https://saffron.example/abaya", price: 650, category: "abaya" }).expect(201)).body;
+    expect(p).toMatchObject({ price: "650.00", currency: "AED", category: "abaya" });
+  });
+
+  it("shows admins the trade licence number for brand sign-ups and claims", async () => {
+    const t = setup();
+    const admin = await t.user("admin");
+    await t.user("dune_hq", { accountType: "BRAND", brand: { name: "Dune Footwear", website: "https://dune.example", tradeLicence: "DED-123456" } });
+    const amy = await t.user("amy");
+    await t.post(amy, [{ image: 0, x: 0.5, y: 0.5, label: "Bag", category: "bag", brandName: "Al Seef Leather" }]).expect(201);
+    await t.user("alseef_hq", { accountType: "BRAND", brand: { name: "Al Seef Leather", website: "https://alseef.example", tradeLicence: "SHJ-9876" } });
+    const q = (await admin.get("/api/admin/queue").expect(200)).body;
+    expect(q.brandsToVerify[0]).toMatchObject({ name: "Dune Footwear", tradeLicence: "DED-123456" });
+    expect(q.claims[0]).toMatchObject({ name: "Al Seef Leather", tradeLicence: "SHJ-9876" });
   });
 });

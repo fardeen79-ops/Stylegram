@@ -50,7 +50,7 @@ const server = app.listen(config.port, () => {
   if (process.env.SEED_DEMO === "true" && freshDatabase) {
     const password = process.env.DEMO_PASSWORD || randomBytes(9).toString("base64url");
     seedDemo(ctx, { password })
-      .then(() => console.log(`Demo content added. Demo accounts (maya.styles, leo_fits, sara.wears, northwind) use password: ${password}`))
+      .then(() => console.log(`Demo content added. Demo accounts (noor.styles, omar.fits, priya.wears, creekdenim) use password: ${password}`))
       .catch((err) => console.error("Adding demo content failed:", err));
   }
 });

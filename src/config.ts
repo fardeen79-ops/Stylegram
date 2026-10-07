@@ -68,6 +68,12 @@ export const config = {
     fullWidth: 1440,
     thumbSize: 480,
   },
+  /** Launch market: prices, commissions and formatting default to the UAE. */
+  market: {
+    country: process.env.MARKET_COUNTRY ?? "AE",
+    currency: (process.env.DEFAULT_CURRENCY ?? "AED").toUpperCase(),
+    locale: process.env.MARKET_LOCALE ?? "en-AE",
+  },
   ai: {
     /** Vision model used for photo safety checks and item suggestions. */
     model: process.env.AI_MODEL ?? "claude-opus-5-5",

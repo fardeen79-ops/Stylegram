@@ -1,5 +1,5 @@
 // Stylegram service worker: makes the app installable and lets it open offline.
-const VERSION = "v5";
+const VERSION = "v6";
 const SHELL_CACHE = `shell-${VERSION}`;
 const MEDIA_CACHE = `media-${VERSION}`;
 const FONT_CACHE = `fonts-${VERSION}`;

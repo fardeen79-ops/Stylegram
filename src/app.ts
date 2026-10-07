@@ -106,7 +106,12 @@ const schemas = {
     displayName: z.string().trim().min(1).max(60),
     accountType: z.enum(["PERSONAL", "BRAND"]).default("PERSONAL"),
     brand: z
-      .object({ name: z.string().trim().min(1).max(60), website: httpUrl, message: z.string().max(500).optional() })
+      .object({
+        name: z.string().trim().min(1).max(60),
+        website: httpUrl,
+        message: z.string().max(500).optional(),
+        tradeLicence: z.string().trim().max(50).optional(),
+      })
       .optional(),
   }),
   login: z.object({ login: z.string().toLowerCase(), password: z.string() }),
@@ -222,6 +227,9 @@ export function createApp(ctx: Ctx) {
   });
   api.get("/categories", (_req, res) => {
     res.json(CATEGORIES);
+  });
+  api.get("/market", (_req, res) => {
+    res.json(ctx.config.market);
   });
 
   // ---- Auth & users ----

@@ -68,7 +68,20 @@ const safe = (fn) => async (...args) => {
   try { await fn(...args); } catch (e) { toast(e.message, true); }
 };
 
-const n = (x) => Number(x).toLocaleString();
+/** Launch market (UAE): numbers, prices and dates use en-AE formatting. */
+const LOCALE = "en-AE";
+const DEFAULT_CURRENCY = "AED";
+const n = (x) => Number(x).toLocaleString(LOCALE);
+/** "AED 1,250.00" */
+function fmtMoney(amount, currency = DEFAULT_CURRENCY) {
+  try {
+    return new Intl.NumberFormat(LOCALE, { style: "currency", currency, currencyDisplay: "code" }).format(Number(amount)).replace(/\u00a0/g, " ");
+  } catch {
+    return `${currency} ${amount}`;
+  }
+}
+const fmtDate = (iso) => new Date(iso).toLocaleDateString(LOCALE, { day: "numeric", month: "short", year: "numeric" });
+const fmtDateTime = (iso) => new Date(iso).toLocaleString(LOCALE, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const plural = (x, word) => `${n(x)} ${word}${x === 1 ? "" : "s"}`;
 
 function ago(iso, long = false) {
@@ -91,7 +104,7 @@ function avatar(u, size = 32, { ring = false } = {}) {
   return ring ? `<span class="ring">${inner}</span>` : inner;
 }
 const vf = (on) => (on ? icons.verified() : "");
-const money = (p) => (p?.price ? `${p.currency === "USD" ? "$" : p.currency + " "}${p.price}` : "");
+const money = (p) => (p?.price ? fmtMoney(p.price, p.currency) : "");
 const spinner = () => `<div class="loading"><div class="spinner"></div></div>`;
 
 /** Bottom sheet on phones, centred dialog on larger screens. */
@@ -336,6 +349,7 @@ function authPage(mode) {
           <div id="brand-fields" hidden>
             <input class="field" name="brandName" placeholder="Brand name" maxlength="60" />
             <input class="field" name="website" type="url" placeholder="Official website (https://…)" />
+            <input class="field" name="tradeLicence" maxlength="50" placeholder="UAE trade licence number (optional)" />
           </div>` : `<input class="field" name="login" placeholder="Username or email" required autocomplete="username" />`}
         <input class="field" name="password" type="password" placeholder="Password" required minlength="8" autocomplete="${signup ? "new-password" : "current-password"}" />
         ${signup ? `<p class="fine" id="fine">People who use our service can see what you post and the brands you tag.</p>` : ""}
@@ -361,7 +375,7 @@ function authPage(mode) {
     const res = signup
       ? await api("/auth/register", { method: "POST", body: {
           username: f.username, email: f.email, password: f.password, displayName: f.displayName, accountType,
-          brand: accountType === "BRAND" ? { name: f.brandName, website: f.website } : undefined } })
+          brand: accountType === "BRAND" ? { name: f.brandName, website: f.website, tradeLicence: f.tradeLicence || undefined } : undefined } })
       : await api("/auth/login", { method: "POST", body: { login: f.login, password: f.password } });
     clearOfflineData();
     state.token = res.token;
@@ -1232,7 +1246,7 @@ async function dashboardPage(params) {
         <label>Name<input class="input" name="name" required maxlength="120" /></label>
         <label>Product URL<input class="input" name="url" type="url" required placeholder="https://" /></label>
         <label>Price<input class="input" name="price" inputmode="decimal" /></label>
-        <label>Currency<input class="input" name="currency" value="USD" maxlength="3" /></label>
+        <label>Currency<input class="input" name="currency" value="${DEFAULT_CURRENCY}" maxlength="3" /></label>
         <label>Category<select class="input" name="category">${state.categories.map((c) => `<option>${esc(c)}</option>`).join("")}</select></label>
         <button class="btn primary">Add product</button>
       </form>
@@ -1276,13 +1290,10 @@ async function dashboardPage(params) {
   }
 }
 
-/** "USD 12.40 · EUR 3.00" from { USD: { PENDING, APPROVED, REVERSED } } for the given statuses. */
+/** "AED 12.40 · USD 3.00" from { AED: { PENDING, APPROVED, REVERSED } } for the given statuses. */
 function sumTotals(totals, statuses) {
-  const parts = Object.entries(totals).map(([cur, t]) => {
-    const v = statuses.reduce((a, st) => a + Number(t[st]), 0);
-    return `${cur} ${v.toFixed(2)}`;
-  });
-  return parts.length ? parts.join(" · ") : "—";
+  const parts = Object.entries(totals).map(([cur, t]) => fmtMoney(statuses.reduce((a, st) => a + Number(t[st]), 0), cur));
+  return parts.length ? parts.join(" · ") : fmtMoney(0);
 }
 const statusBadge = (st) => `<span class="${st === "APPROVED" ? "ok-badge" : st === "REVERSED" ? "bad-badge" : "warn-badge"}">${st.toLowerCase()}</span>`;
 
@@ -1316,14 +1327,14 @@ async function commissionsPanel(panel) {
     <pre class="code">curl -X POST ${esc(origin)}/api/v1/conversions \\
   -H "Authorization: Bearer $STYLEGRAM_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{"clickId":"&lt;sg_click from the landing URL&gt;","orderId":"1001","amount":"89.90","currency":"USD"}'
+  -d '{"clickId":"&lt;sg_click from the landing URL&gt;","orderId":"1001","amount":"349.00","currency":"AED"}'
 
 # Refund or cancellation:
 curl -X POST ${esc(origin)}/api/v1/conversions/1001/reverse -H "Authorization: Bearer $STYLEGRAM_API_KEY"</pre>
     <div class="b" style="margin-top:16px">Recent sales</div>
     ${data.sales.length ? `<table class="table"><tbody>${data.sales.map((c) => `<tr>
-      <td><b>${esc(c.item ?? "Item")}</b><div class="muted small">order ${esc(c.orderId)} · ${c.creator ? `@${esc(c.creator)}` : "—"} · ${new Date(c.createdAt).toLocaleDateString()}</div></td>
-      <td>${esc(c.currency)} ${esc(c.amount)}</td><td>${esc(c.currency)} ${esc(c.commission)}</td><td>${statusBadge(c.status)}</td></tr>`).join("")}</tbody></table>`
+      <td><b>${esc(c.item ?? "Item")}</b><div class="muted small">order ${esc(c.orderId)} · ${c.creator ? `@${esc(c.creator)}` : "—"} · ${fmtDate(c.createdAt)}</div></td>
+      <td>${esc(fmtMoney(c.amount, c.currency))}</td><td>${esc(fmtMoney(c.commission, c.currency))}</td><td>${statusBadge(c.status)}</td></tr>`).join("")}</tbody></table>`
       : `<p class="muted small">No sales reported yet.</p>`}`;
   $("#program", panel).addEventListener("submit", safe(async (e) => {
     e.preventDefault();
@@ -1358,9 +1369,9 @@ async function earningsPage() {
       <div class="stat"><div class="muted small">Approved</div><div class="v" style="font-size:20px">${esc(sumTotals(e.totals, ["APPROVED"]))}</div></div>
     </div>
     <div class="card">${e.sales.length ? `<table class="table"><tbody>${e.sales.map((c) => `<tr>
-      <td><b>${esc(c.item ?? "Item")}</b><div class="muted small"><a href="#/b/${esc(c.brand.slug)}">${esc(c.brand.name)}</a> · ${new Date(c.createdAt).toLocaleDateString()}
+      <td><b>${esc(c.item ?? "Item")}</b><div class="muted small"><a href="#/b/${esc(c.brand.slug)}">${esc(c.brand.name)}</a> · ${fmtDate(c.createdAt)}
         ${c.postId ? ` · <a class="mention" href="#/p/${c.postId}">look</a>` : ""}</div></td>
-      <td>${esc(c.currency)} ${esc(c.creatorEarnings)}</td><td>${statusBadge(c.status)}</td></tr>`).join("")}</tbody></table>`
+      <td>${esc(fmtMoney(c.creatorEarnings, c.currency))}</td><td>${statusBadge(c.status)}</td></tr>`).join("")}</tbody></table>`
       : `<div class="grid-empty" style="padding:30px 0"><div class="circle-icon">${icons.bag()}</div><div class="big" style="font-size:20px">No earnings yet</div>
           Tag the exact products you're wearing. When people shop your looks, sales show up here.</div>`}</div>
     <p class="muted small">Payouts aren't automatic yet. Approved earnings are paid out by the Stylegram team.</p></div>`;
@@ -1371,18 +1382,19 @@ async function adminPage() {
   view.innerHTML = `<div class="page" id="admin"><h1>Admin</h1>
     <div class="card" style="margin-top:16px"><div class="b" style="margin-bottom:8px">Brands waiting for verification</div>
       ${q.brandsToVerify.length ? `<table class="table"><tbody>${q.brandsToVerify.map((b) => `<tr><td><b>${esc(b.name)}</b>
-        <div class="muted small">@${esc(b.owner)} · <a class="mention" href="${esc(b.website)}" target="_blank" rel="noopener">${esc(b.website)}</a></div></td>
+        <div class="muted small">@${esc(b.owner)} · <a class="mention" href="${esc(b.website)}" target="_blank" rel="noopener">${esc(b.website)}</a>
+          · trade licence: ${b.tradeLicence ? esc(b.tradeLicence) : "not given"}</div></td>
         <td style="text-align:right"><button class="btn primary" data-verify="${esc(b.slug)}">Verify</button></td></tr>`).join("")}</tbody></table>` : `<p class="muted">None</p>`}
     </div>
     <div class="card"><div class="b" style="margin-bottom:8px">Brand claims</div>
       ${q.claims.length ? `<table class="table"><tbody>${q.claims.map((c) => `<tr><td><b>${esc(c.name)}</b>
-        <div class="muted small">claimed by @${esc(c.username)} (${esc(c.email)}) ${c.message ? `· “${esc(c.message)}”` : ""}</div></td>
+        <div class="muted small">claimed by @${esc(c.username)} (${esc(c.email)}) · trade licence: ${c.tradeLicence ? esc(c.tradeLicence) : "not given"} ${c.message ? `· “${esc(c.message)}”` : ""}</div></td>
         <td><div class="row" style="justify-content:flex-end"><button class="btn primary" data-claim="${c.id}" data-approve="1">Approve</button><button class="btn" data-claim="${c.id}">Reject</button></div></td></tr>`).join("")}</tbody></table>` : `<p class="muted">None</p>`}
     </div>
     <div class="card"><div class="b" style="margin-bottom:4px">Blocked uploads</div>
       <p class="muted small" style="margin-top:0">Photos the AI check rejected. The images themselves are never stored.</p>
       ${q.blockedUploads.length ? `<table class="table"><tbody>${q.blockedUploads.map((m) => `<tr><td><b>${m.username ? `@${esc(m.username)}` : "deleted user"}</b>
-        <div class="muted small">${esc(m.verdict.replaceAll("_", " "))} · ${esc(m.reason)}</div></td><td class="muted small">${new Date(m.created_at).toLocaleString()}</td></tr>`).join("")}</tbody></table>` : `<p class="muted">None</p>`}
+        <div class="muted small">${esc(m.verdict.replaceAll("_", " "))} · ${esc(m.reason)}</div></td><td class="muted small">${fmtDateTime(m.created_at)}</td></tr>`).join("")}</tbody></table>` : `<p class="muted">None</p>`}
     </div></div>`;
   $("#admin").addEventListener("click", safe(async (e) => {
     const { verify, claim, approve } = e.target.dataset;

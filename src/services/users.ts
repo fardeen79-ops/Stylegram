@@ -23,7 +23,8 @@ export interface RegisterInput {
   password: string;
   displayName: string;
   accountType: "PERSONAL" | "BRAND";
-  brand?: { name: string; website: string; message?: string };
+  /** UAE businesses can give their trade licence number to speed up verification. */
+  brand?: { name: string; website: string; message?: string; tradeLicence?: string };
 }
 
 /**
@@ -67,17 +68,14 @@ export function registerUser(ctx: Ctx, input: RegisterInput): { user: UserRow; b
       | undefined;
     if (existing) {
       if (existing.owner_id !== null) throw new AppError("CONFLICT", `${input.brand.name} already has a brand account`);
-      db.prepare("INSERT INTO brand_claims (brand_id, user_id, message, status, created_at) VALUES (?, ?, ?, 'PENDING', ?)").run(
-        existing.id,
-        userId,
-        input.brand.message ?? "",
-        now,
-      );
+      db.prepare(
+        "INSERT INTO brand_claims (brand_id, user_id, message, trade_licence, status, created_at) VALUES (?, ?, ?, ?, 'PENDING', ?)",
+      ).run(existing.id, userId, input.brand.message ?? "", input.brand.tradeLicence ?? null, now);
       return { userId, brand: { slug, status: "CLAIM_PENDING" } };
     }
     db.prepare(
-      "INSERT INTO brands (slug, name, website, owner_id, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-    ).run(slug, input.brand.name, input.brand.website, userId, userId, now);
+      "INSERT INTO brands (slug, name, website, trade_licence, owner_id, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    ).run(slug, input.brand.name, input.brand.website, input.brand.tradeLicence ?? null, userId, userId, now);
     return { userId, brand: { slug, status: "VERIFICATION_PENDING" } };
   });
   const { userId, brand } = run();

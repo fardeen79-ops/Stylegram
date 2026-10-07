@@ -6,9 +6,12 @@ export const CATEGORIES = [
   "top",
   "bottom",
   "dress",
+  "abaya",
+  "kandura",
   "outerwear",
   "shoes",
   "bag",
+  "scarf",
   "hat",
   "eyewear",
   "jewelry",
@@ -210,6 +213,11 @@ const MIGRATIONS: string[] = [
     reason     TEXT NOT NULL,
     created_at TEXT NOT NULL
   );
+  `,
+  // 2: UAE launch: trade licence numbers for brand verification and claims.
+  `
+  ALTER TABLE brands ADD COLUMN trade_licence TEXT;
+  ALTER TABLE brand_claims ADD COLUMN trade_licence TEXT;
   `,
 ];
 

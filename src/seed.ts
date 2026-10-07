@@ -16,4 +16,4 @@ if ((ctx.db.prepare("SELECT COUNT(*) AS n FROM users").get() as { n: number }).n
 }
 registerUser(ctx, { username: "admin", email: "admin@example.com", password: PASSWORD, displayName: "Admin", accountType: "PERSONAL" });
 await seedDemo(ctx, { password: PASSWORD });
-console.log(`Seeded ${config.dbPath}. Log in as maya.styles, leo_fits, sara.wears, northwind (brand) or admin — password: ${PASSWORD}`);
+console.log(`Seeded ${config.dbPath}. Log in as noor.styles, omar.fits, priya.wears, creekdenim (brand) or admin — password: ${PASSWORD}`);

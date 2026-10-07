@@ -41,7 +41,7 @@ export interface ImageAI {
 /** The model declined to look at the image; treated as unsafe. */
 export class ImageRefusedError extends Error {}
 
-const SYSTEM_PROMPT = `You review photos uploaded to Stylegram, a fashion app where people share outfits and tag the clothes and accessories they're wearing.
+const SYSTEM_PROMPT = `You review photos uploaded to Stylegram, a fashion app in the United Arab Emirates where people share outfits and tag the clothes and accessories they're wearing. Modest fashion and traditional Gulf dress are common.
 
 For each photo, return two things.
 
@@ -55,7 +55,7 @@ Set minor_concern to true if anyone who may be under 18 is shown nude, partially
 
 items — the clothing, shoes, bags and accessories visible in the photo (at most 10, most prominent first):
 - label: a short shopper-friendly name, e.g. "Black leather Chelsea boots" or "Light-wash straight jeans".
-- category: the closest category from the allowed list.
+- category: the closest category from the allowed list. Use "abaya" for abayas, "kandura" for kanduras, dishdashas and thobes, and "scarf" for shaylas, hijabs, ghutras, keffiyehs and other scarves.
 - x, y: the centre of the item as fractions of the image width and height (0 = left/top, 1 = right/bottom).
 - brand: only when a brand name or logo is clearly legible on the item; otherwise null. Never guess a brand from style alone.
 Return an empty items list for photos without clothing or accessories.`;
