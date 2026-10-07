@@ -152,11 +152,86 @@ CREATE TABLE IF NOT EXISTS comments (
 CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id, created_at);
 `;
 
+/**
+ * Schema changes after the first release, applied in order and tracked with SQLite's
+ * `user_version`, so existing databases (e.g. on a Railway volume) upgrade in place.
+ * Never edit a migration that has shipped; add a new one.
+ */
+const MIGRATIONS: string[] = [
+  // 1: commissions (brand programs, click ids, conversions) and AI image checks.
+  `
+  ALTER TABLE brands ADD COLUMN commission_bps INTEGER CHECK (commission_bps IS NULL OR commission_bps BETWEEN 0 AND 10000);
+  ALTER TABLE brands ADD COLUMN attribution_days INTEGER NOT NULL DEFAULT 30;
+  ALTER TABLE brands ADD COLUMN api_key_hash TEXT;
+  ALTER TABLE brands ADD COLUMN api_key_prefix TEXT;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_brands_api_key ON brands(api_key_hash);
+
+  ALTER TABLE tag_clicks ADD COLUMN click_id TEXT;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_clicks_click_id ON tag_clicks(click_id);
+
+  -- A purchase a brand reports for a Stylegram click (server-to-server conversion API).
+  CREATE TABLE conversions (
+    id               INTEGER PRIMARY KEY,
+    brand_id         INTEGER NOT NULL REFERENCES brands(id),
+    click_id         TEXT NOT NULL,
+    tag_id           INTEGER REFERENCES tags(id) ON DELETE SET NULL,
+    post_id          INTEGER REFERENCES posts(id) ON DELETE SET NULL,
+    creator_id       INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    order_id         TEXT NOT NULL,
+    amount_cents     INTEGER NOT NULL CHECK (amount_cents >= 0),
+    currency         TEXT NOT NULL,
+    commission_bps   INTEGER NOT NULL,
+    commission_cents INTEGER NOT NULL,
+    creator_cents    INTEGER NOT NULL,
+    reversed_at      TEXT,
+    created_at       TEXT NOT NULL,
+    UNIQUE (brand_id, order_id)
+  );
+  CREATE INDEX idx_conversions_creator ON conversions(creator_id, created_at);
+  CREATE INDEX idx_conversions_brand ON conversions(brand_id, created_at);
+
+  -- AI results per uploaded file (sha256 of the original bytes), so a photo is checked once.
+  CREATE TABLE image_analyses (
+    hash          TEXT PRIMARY KEY,
+    verdict       TEXT NOT NULL,
+    minor_concern INTEGER NOT NULL,
+    reason        TEXT NOT NULL,
+    items         TEXT NOT NULL,
+    model         TEXT NOT NULL,
+    created_at    TEXT NOT NULL
+  );
+
+  -- Blocked upload attempts (the image itself is never stored), for admin review.
+  CREATE TABLE moderation_events (
+    id         INTEGER PRIMARY KEY,
+    user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    hash       TEXT NOT NULL,
+    verdict    TEXT NOT NULL,
+    reason     TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  `,
+];
+
+export function migrate(db: DB): void {
+  const current = db.pragma("user_version", { simple: true }) as number;
+  for (let v = current; v < MIGRATIONS.length; v++) {
+    db.transaction(() => {
+      db.exec(MIGRATIONS[v]!);
+      db.pragma(`user_version = ${v + 1}`);
+    })();
+  }
+}
+
 export function openDb(path: string): DB {
   const db = new Database(path);
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
   db.pragma("busy_timeout = 5000");
   db.exec(SCHEMA);
+  migrate(db);
   return db;
 }
+
+/** The original schema, for migration tests. */
+export const BASE_SCHEMA = SCHEMA;

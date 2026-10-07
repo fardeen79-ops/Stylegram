@@ -474,3 +474,21 @@ main { min-height: 100vh; padding-bottom: 64px; }
 @keyframes ring { 0% { opacity: 0.9; transform: scale(0.3); } 100% { opacity: 0; transform: scale(1.5); } }
 .burst .ic { width: 84px; height: 84px; filter: drop-shadow(0 0 0 #fff) drop-shadow(0 6px 16px rgb(0 0 0 / 0.35)); }
 .burst .ic path { stroke: #fff; stroke-width: 1.2; }
+
+/* ---- AI suggestions & commissions --------------------------------------- */
+.editor-media .ghost {
+  position: absolute; transform: translate(-50%, -50%); width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center; color: #fff; background: rgb(79 70 229 / 0.85);
+  border: 2px dashed rgb(255 255 255 / 0.9); cursor: pointer; animation: ghost 1.8s ease-in-out infinite;
+}
+.editor-media .ghost .ic { width: 16px; height: 16px; }
+@keyframes ghost { 0%, 100% { box-shadow: 0 0 0 0 rgb(79 70 229 / 0.5); } 50% { box-shadow: 0 0 0 8px rgb(79 70 229 / 0); } }
+.editor-hint .ic { display: inline-block; width: 13px; height: 13px; vertical-align: -2px; margin-right: 4px; }
+.editor-hint.scanning { animation: blink 1.2s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: 0.55; } }
+.ai-box { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--bg-2); }
+.ai-box .ic, .ai-box > .b .ic { display: inline-block; width: 14px; height: 14px; vertical-align: -2px; color: var(--blue); }
+.ai-box .tag-list li:first-child { border-top: 0; }
+pre.code { background: var(--btn-2); border-radius: 10px; padding: 12px; overflow-x: auto; font-size: 12px; line-height: 18px; white-space: pre; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+code.key { word-break: break-all; display: block; margin: 6px 0; }

@@ -2,7 +2,8 @@ import type { Ctx } from "../context.js";
 import type { Category } from "../db.js";
 import { AppError } from "../errors.js";
 import { mediaUrl, type StoredImage } from "../media.js";
-import { withUtm } from "../util.js";
+import { normalizeHttpUrl, withUtm } from "../util.js";
+import { earnsCommission, newClickId } from "./commissions.js";
 import { brandSummary, findOrCreateBrand, getBrand, getProduct, publicProduct, type BrandRow } from "./brands.js";
 import { getUser, getUserByUsername, userSummary } from "./users.js";
 
@@ -140,6 +141,7 @@ function publicTag(ctx: Ctx, t: TagRow) {
     brand: brandSummary(getBrand(ctx, t.brand_id)),
     product: product ? publicProduct(product) : null,
     shopUrl: effectiveUrl(ctx, t) ? `/t/${t.id}` : null,
+    earnsCommission: earnsCommission(ctx, getBrand(ctx, t.brand_id)),
   };
 }
 
@@ -312,14 +314,29 @@ export function deleteTag(ctx: Ctx, userId: number, tagId: number): void {
   ctx.db.prepare("DELETE FROM tags WHERE id = ?").run(tagId);
 }
 
-/** Record an outbound click and return the destination (with UTM parameters). */
+/**
+ * Record an outbound click and return where to send the shopper: the product URL with UTM
+ * parameters and a unique `sg_click` id the brand reports back with a purchase. Brands without
+ * a Stylegram commission program go through the affiliate network link, when one is configured.
+ */
 export function trackClick(ctx: Ctx, tagId: number): string {
   const t = ctx.db.prepare("SELECT * FROM tags WHERE id = ? AND status != 'REJECTED'").get(tagId) as TagRow | undefined;
   if (!t) throw new AppError("NOT_FOUND", "Link not found");
   const url = effectiveUrl(ctx, t);
   if (!url) throw new AppError("NOT_FOUND", "This tag has no link");
-  ctx.db.prepare("INSERT INTO tag_clicks (tag_id, created_at) VALUES (?, ?)").run(t.id, ctx.now().toISOString());
-  return withUtm(url, ctx.config.utmSource, `post_${t.post_id}`);
+  const clickId = newClickId();
+  ctx.db.prepare("INSERT INTO tag_clicks (tag_id, click_id, created_at) VALUES (?, ?, ?)").run(t.id, clickId, ctx.now().toISOString());
+  const dest = new URL(withUtm(url, ctx.config.utmSource, `post_${t.post_id}`));
+  dest.searchParams.set("sg_click", clickId);
+  const brand = getBrand(ctx, t.brand_id) as ReturnType<typeof getBrand> & { commission_bps: number | null };
+  const template = ctx.config.commissions.affiliateLinkTemplate;
+  if (brand.commission_bps === null && template) {
+    const wrapped = normalizeHttpUrl(
+      template.replaceAll("{url}", encodeURIComponent(dest.toString())).replaceAll("{click}", encodeURIComponent(clickId)),
+    );
+    if (wrapped) return wrapped;
+  }
+  return dest.toString();
 }
 
 // ---- Engagement -----------------------------------------------------------

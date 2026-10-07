@@ -63,6 +63,16 @@ import {
   updateProfile,
 } from "./services/users.js";
 import { normalizeHttpUrl } from "./util.js";
+import {
+  brandFromApiKey,
+  brandSales,
+  creatorEarnings,
+  recordConversion,
+  reverseConversion,
+  rotateApiKey,
+  updateProgram,
+} from "./services/commissions.js";
+import { assertImageAllowed, recentModerationEvents, suggestionsFor } from "./services/vision.js";
 
 // ---- Schemas ----------------------------------------------------------------
 
@@ -121,6 +131,20 @@ const schemas = {
   }),
   review: z.object({ action: z.enum(["CONFIRM", "REJECT"]), productId: z.number().int().positive().nullable().optional() }),
   verify: z.object({ verified: z.boolean() }),
+  program: z.object({
+    commissionPercent: z.number().min(0).max(50).nullable(),
+    attributionDays: z.number().int().min(1).max(90).optional(),
+  }),
+  conversion: z.object({
+    clickId: z.string().min(1).max(64),
+    orderId: z.string().trim().min(1).max(128),
+    amount: z.union([z.string(), z.number()]).transform((v, c) => {
+      const m = /^(\d{1,9})(?:\.(\d{1,2}))?$/.exec(String(v).trim());
+      if (!m) c.addIssue({ code: "custom", message: "amount must be a decimal like 49.99" });
+      return m ? Number(m[1]) * 100 + Number((m[2] ?? "").padEnd(2, "0")) : 0;
+    }),
+    currency: z.string().toUpperCase().regex(/^[A-Z]{3}$/, "currency must be a 3-letter code like USD"),
+  }),
   decide: z.object({ approve: z.boolean() }),
 };
 
@@ -153,6 +177,17 @@ function jsonField(value: unknown, field: string): unknown {
 
 const toCents = (price?: number) => (price === undefined ? undefined : Math.round(price * 100));
 
+/** Tiny in-memory sliding-window limiter (per process), used to cap AI spend per user. */
+function rateLimiter(limit: number, windowMs: number) {
+  const hits = new Map<number, number[]>();
+  return (key: number, now: number) => {
+    const recent = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
+    if (recent.length >= limit) throw new AppError("RATE_LIMITED", "You've analysed a lot of photos. Try again in a little while.");
+    recent.push(now);
+    hits.set(key, recent);
+  };
+}
+
 // ---- App --------------------------------------------------------------------
 
 export function createApp(ctx: Ctx) {
@@ -175,6 +210,7 @@ export function createApp(ctx: Ctx) {
   });
 
   const auth = requireAuth(ctx);
+  const aiLimit = rateLimiter(ctx.config.ai.analysesPerHour, 60 * 60 * 1000);
   // Public pages (profiles, posts, brands) work signed out, but personalise when a token is sent.
   const optionalAuth = (req: Request, res: Response, next: NextFunction) =>
     req.headers.authorization ? auth(req, res, next) : next();
@@ -212,6 +248,7 @@ export function createApp(ctx: Ctx) {
 
   api.put("/me/avatar", auth, upload.single("avatar"), async (req, res) => {
     if (!req.file) throw new AppError("VALIDATION_ERROR", "Attach an image as 'avatar'");
+    await assertImageAllowed(ctx, uid(req), req.file.buffer);
     const img = await storeImage(ctx.config, req.file.buffer, { square: 320 });
     const old = setAvatar(ctx, uid(req), img.path);
     await deleteImages(ctx.config, [img.thumbPath, ...(old ? [old] : [])]);
@@ -258,6 +295,8 @@ export function createApp(ctx: Ctx) {
     if (files.length === 0) throw new AppError("VALIDATION_ERROR", "Attach at least one photo as 'images'");
     const caption = parse(schemas.caption, req.body.caption ?? "");
     const tags = parse(schemas.tags, jsonField(req.body.tags, "tags") ?? []);
+    // Every photo is checked before anything is stored; one blocked photo rejects the post.
+    for (const f of files) await assertImageAllowed(ctx, uid(req), f.buffer);
     const stored: StoredImage[] = [];
     try {
       for (const f of files) stored.push(await storeImage(ctx.config, f.buffer));
@@ -362,6 +401,7 @@ export function createApp(ctx: Ctx) {
   api.put("/brand/logo", auth, upload.single("logo"), async (req, res) => {
     managedBrand(ctx, uid(req)); // check before processing the upload
     if (!req.file) throw new AppError("VALIDATION_ERROR", "Attach an image as 'logo'");
+    await assertImageAllowed(ctx, uid(req), req.file.buffer);
     const img = await storeImage(ctx.config, req.file.buffer, { square: 320 });
     const old = setBrandLogo(ctx, uid(req), img.path);
     await deleteImages(ctx.config, [img.thumbPath, ...(old ? [old] : [])]);
@@ -397,9 +437,57 @@ export function createApp(ctx: Ctx) {
     res.status(204).end();
   });
 
+  // ---- AI photo checks & item suggestions ----
+  api.get("/ai/status", (_req, res) => {
+    res.json({ enabled: Boolean(ctx.ai) });
+  });
+
+  api.post("/ai/analyze", auth, upload.single("image"), async (req, res) => {
+    if (!ctx.ai) throw new AppError("AI_DISABLED", "AI suggestions aren't set up on this server");
+    if (!req.file) throw new AppError("VALIDATION_ERROR", "Attach an image as 'image'");
+    aiLimit(uid(req), ctx.now().getTime());
+    const analysis = await assertImageAllowed(ctx, uid(req), req.file.buffer);
+    res.json({ allowed: true, suggestions: analysis ? suggestionsFor(ctx, analysis) : [] });
+  });
+
+  // ---- Commissions ----
+  api.get("/me/earnings", auth, (req, res) => {
+    res.json(creatorEarnings(ctx, uid(req)));
+  });
+
+  api.get("/brand/sales", auth, (req, res) => {
+    res.json(brandSales(ctx, uid(req)));
+  });
+
+  api.put("/brand/program", auth, (req, res) => {
+    res.json(updateProgram(ctx, uid(req), parse(schemas.program, req.body)));
+  });
+
+  api.post("/brand/api-key", auth, (req, res) => {
+    res.status(201).json(rotateApiKey(ctx, uid(req)));
+  });
+
+  // Server-to-server conversion API for brands (Authorization: Bearer sgk_...).
+  api.post("/v1/conversions", (req, res) => {
+    const brand = brandFromApiKey(ctx, req.header("authorization"));
+    const body = parse(schemas.conversion, req.body);
+    const { conversion, created } = recordConversion(ctx, brand, {
+      clickId: body.clickId,
+      orderId: body.orderId,
+      amountCents: body.amount,
+      currency: body.currency,
+    });
+    res.status(created ? 201 : 200).json(conversion);
+  });
+
+  api.post("/v1/conversions/:orderId/reverse", (req, res) => {
+    const brand = brandFromApiKey(ctx, req.header("authorization"));
+    res.json(reverseConversion(ctx, brand, String(req.params.orderId)));
+  });
+
   // ---- Admin ----
   api.get("/admin/queue", auth, (req, res) => {
-    res.json(adminQueue(ctx, uid(req)));
+    res.json({ ...adminQueue(ctx, uid(req)), blockedUploads: recentModerationEvents(ctx) });
   });
 
   api.post("/admin/brands/:slug/verify", auth, (req, res) => {

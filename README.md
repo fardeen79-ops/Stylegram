@@ -39,6 +39,67 @@ The layout is familiar to people who use social apps, with Stylegram's own visua
   on desktop, a "Create new post" flow with tap-to-tag, light and dark mode, and @mentions and #hashtags as
   links.
 
+## AI photo checks and item suggestions
+
+Every uploaded photo (posts, profile photos, brand logos) is reviewed by Claude's vision model **before
+anything is stored**. Each photo is reviewed in one call, which returns:
+- **A safety verdict.** Partial nudity, explicit nudity, sexual activity, and any sexualised depiction of
+  someone who may be a minor are **blocked** ("This photo can't be posted…"). Swimwear and underwear worn in
+  an ordinary way are allowed, as you'd expect for a fashion app. If the AI can't be reached, the upload is
+  refused rather than let through, and if the model declines to review a photo, it's treated as unsafe.
+  Blocked attempts (who, when, why; never the image) appear under **Admin → Blocked uploads**.
+- **Item suggestions.** The clothes and accessories visible, with their approximate position and a brand
+  when a logo is legible. In **Create**, suggested items show as ✦ markers on the photo and as a list beside
+  it. Tapping one opens the tag form pre-filled, matched to a known brand and its catalog product when
+  possible.
+
+Results are cached per photo, so a photo is only checked once, even though it's checked again when you share.
+To set it up, add **`ANTHROPIC_API_KEY`** (from console.anthropic.com) to your Railway variables. Without it,
+uploads are **not** checked and the server logs a warning.
+
+- **Model:** `claude-opus-5-5` at low effort, with automatic server-side fallback if a request is declined.
+  Change it with `AI_MODEL`.
+- **Cost:** photos are shrunk to 1024 px first. Expect roughly **1–2 US cents per photo**.
+- **Spending cap:** `AI_ANALYSES_PER_HOUR` (default 60) limits suggestion requests per user.
+
+## Commissions
+
+Stylegram earns a commission when someone buys through a Shop link, and shares it with the creator who
+tagged the item.
+
+1. **Brands** turn on a program in **Brand dashboard → Commissions**. They set a commission % (up to 50%)
+   and an attribution window (1–90 days), and create an API key.
+2. **Every Shop click** gets a unique `sg_click` id added to the product URL. The brand's site keeps it, for
+   example in a cookie, until checkout.
+3. **The brand's server reports the order:**
+   ```bash
+   curl -X POST https://<your-app>/api/v1/conversions \
+     -H "Authorization: Bearer sgk_..." -H "Content-Type: application/json" \
+     -d '{"clickId":"sgc_...","orderId":"1001","amount":"89.90","currency":"USD"}'
+   ```
+   Refunds go to `POST /api/v1/conversions/<orderId>/reverse`. Reports are idempotent per order id, so
+   sending one twice is harmless.
+4. **Stylegram attributes and splits the sale.** The sale is attributed to the tagged post if the click was
+   within the window. Commission = order amount × the brand's rate. The creator gets `CREATOR_SHARE_PERCENT`
+   (default 50%) and the rest is the platform's. Sales on a brand's own posts earn nothing.
+5. **Commissions are approved after the refund window.** Each one stays **pending** for
+   `COMMISSION_APPROVAL_DAYS` (default 30), then it's **approved**, unless it was reversed first.
+
+Creators see their sales under **Earnings** (More menu). When a tag can earn a commission, shoppers see a
+disclosure on the product sheet: "Stylegram and @creator may earn a commission if you buy…".
+
+**Brands without a Stylegram program:** set `AFFILIATE_LINK_TEMPLATE` to route their Shop links through an
+affiliate network such as Skimlinks, Sovrn or Awin. `{url}` is replaced with the product URL and `{click}`
+with the click id, which you pass as the network's sub-id so its reports can be matched to creators. Use the
+exact link format from your network's dashboard, for example
+`https://go.skimresources.com/?id=YOUR_ID&xs=1&url={url}&xcust={click}`.
+
+**Not built yet:**
+- **Paying people out.** Brands are invoiced, and approved earnings are paid out manually. Automating this
+  would mean, for example, Stripe Connect payouts to creators plus tax forms.
+- **Importing affiliate-network reports.** Network sales currently show up only in the network's own
+  dashboard.
+
 ## Deploy to Railway
 
 The repo is ready for [Railway](https://railway.com): `railway.json` tells it to build the `Dockerfile` and
@@ -58,6 +119,7 @@ check `/api/health`. Expect about **$5/month** on the Hobby plan.
    | `ADMIN_PASSWORD` | a long password (12+ characters) |
    | `SEED_DEMO` | `true` to fill the site with the demo posts on first start (optional) |
    | `DEMO_PASSWORD` | password for the demo accounts (optional; otherwise one is generated and printed in the deploy logs) |
+   | `ANTHROPIC_API_KEY` | **needed for the nudity check** and AI suggestions (from console.anthropic.com) |
 
    `JWT_SECRET` is optional. If it isn't set, a secret is generated once and kept on the volume.
 4. **Get a link.** Go to **Settings → Networking → Generate Domain**, which gives you
@@ -178,6 +240,12 @@ height.
 | `JWT_SECRET` | generated once and kept in `<DATA_DIR>/.jwt-secret` | Set it yourself if you prefer; tokens stay valid across restarts either way |
 | `ADMIN_USERNAMES` | `admin` | **Development only**: these usernames become admins when they register |
 | `UTM_SOURCE` | `stylegram` | |
+| `ANTHROPIC_API_KEY` | none | Turns on photo safety checks and item suggestions |
+| `AI_MODEL` | `claude-opus-5-5` | Vision model |
+| `AI_ANALYSES_PER_HOUR` | `60` | Suggestion requests per user per hour |
+| `CREATOR_SHARE_PERCENT` | `50` | Creator's share of each commission |
+| `COMMISSION_APPROVAL_DAYS` | `30` | Refund window before a commission is approved |
+| `AFFILIATE_LINK_TEMPLATE` | none | Affiliate-network link for brands without a program |
 
 ## Stack
 

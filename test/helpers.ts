@@ -16,10 +16,15 @@ export async function jpeg(color = "#c33", width = 800, height = 1000, exif = fa
 
 const FIXTURE = await jpeg();
 
-export function setup() {
+export function setup(opts: { ai?: Ctx["ai"]; config?: Partial<typeof config> } = {}) {
   let now = new Date("2026-03-01T12:00:00Z");
   const uploadDir = mkdtempSync(join(tmpdir(), "stylegram-test-"));
-  const ctx: Ctx = { db: openDb(":memory:"), config: { ...config, uploadDir, adminUsernames: ["admin"] }, now: () => now };
+  const ctx: Ctx = {
+    db: openDb(":memory:"),
+    config: { ...config, uploadDir, adminUsernames: ["admin"], ...opts.config },
+    now: () => now,
+    ai: opts.ai,
+  };
   const http = request(createApp(ctx));
 
   async function user(username: string, extra: Record<string, unknown> = {}) {

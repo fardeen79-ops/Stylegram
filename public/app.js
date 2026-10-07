@@ -56,7 +56,10 @@ async function api(path, { method = "GET", body, form } = {}) {
   if (!res.ok) {
     if (res.status === 401 && state.token && path !== "/auth/login") logout(false);
     const d = data?.error?.details?.[0];
-    throw new Error(d ? `${d.path ? d.path + ": " : ""}${d.message}` : data?.error?.message ?? res.statusText);
+    const err = new Error(d ? `${d.path ? d.path + ": " : ""}${d.message}` : data?.error?.message ?? res.statusText);
+    err.code = data?.error?.code;
+    err.status = res.status;
+    throw err;
   }
   return data;
 }
@@ -237,6 +240,7 @@ function moreMenu() {
   sheet(`<div class="menu-list">
       <a href="#/settings" data-close>Settings</a>
       <a href="#/saved" data-close>Closet</a>
+      <a href="#/earnings" data-close>Earnings</a>
       ${state.me.ownedBrand?.verified ? `<a href="#/brand" data-close>Brand dashboard</a>` : ""}
       ${!install.standalone && (install.canPrompt || install.iosHint) ? `<button data-install>Add Stylegram to Home Screen</button>` : ""}
       <button data-logout class="danger">Log out</button>
@@ -262,6 +266,7 @@ const routes = [
   [/^\/settings$/, requireLogin(settingsPage)],
   [/^\/brand$/, requireLogin((q) => dashboardPage(q))],
   [/^\/admin$/, requireLogin(adminPage)],
+  [/^\/earnings$/, requireLogin(earningsPage)],
 ];
 
 function requireLogin(fn) {
@@ -484,7 +489,7 @@ function detailPostHtml(p) {
 
 function findTag(p, id) { return allTags(p).find((t) => t.id === Number(id)); }
 
-function productSheet(t) {
+function productSheet(t, post) {
   const p = t.product;
   sheet(`<div class="product-sheet">
     <div class="brandline"><span class="logo">${t.brand.logoUrl ? `<img src="${esc(t.brand.logoUrl)}" alt="" />` : esc(t.brand.name[0])}</span>
@@ -500,7 +505,9 @@ function productSheet(t) {
       ${t.shopUrl ? `<a class="btn primary" href="${esc(t.shopUrl)}" target="_blank" rel="noopener nofollow" data-close>${p ? "View on website" : `Shop ${esc(t.brand.name)}`}</a>` : ""}
       <a class="btn" href="#/b/${esc(t.brand.slug)}${p ? `?product=${p.id}` : ""}" data-close>${p ? "More looks with this item" : "See brand page"}</a>
       <button class="btn" data-close>Close</button>
-    </div></div>`);
+    </div>
+    ${t.earnsCommission ? `<p class="muted small" style="margin:14px 0 0;text-align:center">Stylegram${post && !post.author.brand ? ` and @${esc(post.author.username)}` : ""} may earn a commission if you buy through this link.</p>` : ""}
+    </div>`);
 }
 
 function postMenu(p, el) {
@@ -573,7 +580,7 @@ function mountPost(el, p, { detail = false } = {}) {
       return;
     }
     const tag = e.target.closest("[data-tag]");
-    if (tag && media.classList.contains("show-tags")) return productSheet(findTag(p, tag.dataset.tag));
+    if (tag && media.classList.contains("show-tags")) return productSheet(findTag(p, tag.dataset.tag), p);
     if (e.target.closest(".bag-btn")) return media.classList.toggle("show-tags");
     // Single tap toggles tags; double tap likes.
     if (tapTimer) { clearTimeout(tapTimer); tapTimer = null; setLike(true, { fromTap: true }); return; }
@@ -583,7 +590,7 @@ function mountPost(el, p, { detail = false } = {}) {
   el.addEventListener("click", safe(async (e) => {
     const t = e.target;
     if (t.closest("[data-like]")) return setLike(!p.likedByMe);
-    if (t.closest(".shop-card")) return productSheet(findTag(p, t.closest(".shop-card").dataset.tag));
+    if (t.closest(".shop-card")) return productSheet(findTag(p, t.closest(".shop-card").dataset.tag), p);
     if (t.closest("[data-menu]")) return postMenu(p, el);
     if (t.closest("[data-more]")) { $("[data-cap]", el).innerHTML = rich(p.caption); t.closest("[data-more]").remove(); el.querySelector(".caption").lastChild?.remove?.(); return; }
     if (t.closest("[data-share]")) {
@@ -980,7 +987,7 @@ function brandAutocomplete(input, onPick) {
 
 async function createPage() {
   if (!state.categories.length) state.categories = await api("/categories");
-  const photos = [];
+  const photos = []; // { file, url, status: "checking" | "ok" | "off" | "error", suggestions: [] }
   const tags = [];
   let current = 0;
 
@@ -994,6 +1001,7 @@ async function createPage() {
         <div class="row">${avatar(state.me, 28)}<span class="b">${esc(state.me.username)}</span></div>
         <textarea id="caption" maxlength="2200" placeholder="Write a caption… Use #hashtags and @mentions"></textarea>
         <div class="count"><span id="cc">0</span>/2,200</div>
+        <div id="ai-panel"></div>
         <div class="b" style="margin-top:6px">Tagged products</div>
         <ul class="tag-list" id="tag-list"></ul>
       </div>
@@ -1004,7 +1012,18 @@ async function createPage() {
     const ph = photos[current];
     canvas.innerHTML = `<img src="${ph.url}" alt="Photo ${current + 1}" />` +
       tags.map((t) => (t.image === current ? `<span class="pin" style="left:${t.x * 100}%;top:${t.y * 100}%"></span>` : "")).join("") +
-      `<span class="editor-hint">Tap an item to tag its brand</span>`;
+      ph.suggestions.map((sg, i) => `<button class="ghost" data-sugg="${i}" style="left:${sg.x * 100}%;top:${sg.y * 100}%" title="Suggested: ${esc(sg.label)}" aria-label="Tag suggested item: ${esc(sg.label)}">${icons.explore(true)}</button>`).join("") +
+      (ph.status === "checking" ? `<span class="editor-hint scanning">${icons.explore(true)} Checking photo and finding items…</span>`
+        : `<span class="editor-hint">${ph.suggestions.length ? "Tap a ✦ to tag a suggested item, or tap anywhere" : "Tap an item to tag its brand"}</span>`);
+    $("#ai-panel").innerHTML = ph.suggestions.length
+      ? `<div class="ai-box"><div class="b small">${icons.explore(true)} Suggested items</div>
+          <ul class="tag-list">${ph.suggestions.map((sg, i) => `<li><div class="t"><div class="b">${esc(sg.label)}</div>
+            <div class="muted small">${esc(sg.brand?.name ?? sg.brandName ?? "Brand unknown")} · ${esc(sg.category)}${sg.product?.price ? ` · ${esc(money(sg.product))}` : ""}</div></div>
+            <button class="btn" data-sugg="${i}">Tag</button></li>`).join("")}</ul>
+          <div class="muted small">Suggestions are made by AI. Check the brand before tagging.</div></div>`
+      : ph.status === "checking" ? `<div class="ai-box muted small">${icons.explore(true)} Looking for clothes and accessories…</div>` : "";
+    $("#share").disabled = photos.some((p) => p.status === "checking");
+    $("#share").textContent = $("#share").disabled ? "Checking…" : "Share";
     $("#thumbs").hidden = photos.length < 2;
     $("#thumbs").innerHTML = photos.map((p, i) => `<button class="${i === current ? "on" : ""}" data-i="${i}"><img src="${p.url}" alt="" /></button>`).join("");
     $("#tag-list").innerHTML = tags.length
@@ -1014,11 +1033,43 @@ async function createPage() {
       : `<li class="muted small">Tap the photo where an item is to tag the brand and product.</li>`;
   };
 
+  /** Check a photo for nudity and get item suggestions (no-op when AI isn't set up on the server). */
+  async function analyze(photo) {
+    if (state.aiEnabled === false) { photo.status = "off"; return; }
+    const form = new FormData();
+    form.append("image", photo.file);
+    try {
+      const res = await api("/ai/analyze", { method: "POST", form });
+      photo.suggestions = res.suggestions;
+      photo.status = "ok";
+    } catch (e) {
+      if (e.code === "AI_DISABLED") { state.aiEnabled = false; photo.status = "off"; }
+      else if (e.code === "CONTENT_REJECTED") {
+        const i = photos.indexOf(photo);
+        if (i >= 0) photos.splice(i, 1);
+        for (let k = tags.length - 1; k >= 0; k--) {
+          if (tags[k].image === i) tags.splice(k, 1);
+          else if (tags[k].image > i) tags[k].image--;
+        }
+        current = Math.min(current, Math.max(0, photos.length - 1));
+        toast(e.message, true);
+        if (!photos.length) return route();
+      } else {
+        photo.status = "error"; // the server checks again when you share
+      }
+    }
+    if (document.body.contains(canvas)) draw();
+  }
+
   const addFiles = (files) => {
+    const added = [];
     for (const file of [...files].filter((f) => f.type.startsWith("image/")).slice(0, 10 - photos.length)) {
-      photos.push({ file, url: URL.createObjectURL(file) });
+      const photo = { file, url: URL.createObjectURL(file), status: "checking", suggestions: [] };
+      photos.push(photo);
+      added.push(photo);
     }
     if (!photos.length) return;
+    added.forEach((photo) => analyze(photo));
     $("#pick").hidden = true;
     $("#body").hidden = false;
     $("#back").hidden = false;
@@ -1035,13 +1086,25 @@ async function createPage() {
   $("#thumbs").addEventListener("click", (e) => { const b = e.target.closest("[data-i]"); if (b) { current = Number(b.dataset.i); draw(); } });
   $("#tag-list").addEventListener("click", (e) => { const b = e.target.closest("[data-remove]"); if (b) { tags.splice(Number(b.dataset.remove), 1); draw(); } });
 
+  const useSuggestion = (i) => {
+    const ph = photos[current];
+    const sg = ph.suggestions[i];
+    if (!sg) return;
+    openTagForm(sg.x, sg.y, sg, () => ph.suggestions.splice(ph.suggestions.indexOf(sg), 1));
+  };
+  $("#ai-panel").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-sugg]");
+    if (b) useSuggestion(Number(b.dataset.sugg));
+  });
   canvas.addEventListener("click", (e) => {
+    const ghost = e.target.closest(".ghost");
+    if (ghost) return useSuggestion(Number(ghost.dataset.sugg));
     if (e.target.closest(".tag-form") || e.target.tagName !== "IMG") return;
     const rect = e.target.getBoundingClientRect();
     openTagForm(clamp((e.clientX - rect.left) / rect.width, 0, 1), clamp((e.clientY - rect.top) / rect.height, 0, 1));
   });
 
-  function openTagForm(x, y) {
+  function openTagForm(x, y, prefill = null, onDone = null) {
     $(".tag-form", canvas)?.remove();
     $(".editor-hint", canvas)?.remove();
     const form = document.createElement("form");
@@ -1063,7 +1126,7 @@ async function createPage() {
     Object.assign(pin.style, { left: `${x * 100}%`, top: `${y * 100}%` });
     canvas.append(pin);
     let brand = { name: "" }, products = [];
-    brandAutocomplete(form.brand, async (b) => {
+    const loadProducts = async (b, selectId) => {
       brand = b;
       products = [];
       form.product.hidden = true;
@@ -1072,7 +1135,16 @@ async function createPage() {
       if (!products.length) return;
       form.product.innerHTML = `<option value="">Product not listed</option>` + products.map((p) => `<option value="${p.id}">${esc(p.name)}${p.price ? ` · ${esc(money(p))}` : ""}</option>`).join("");
       form.product.hidden = false;
-    });
+      if (selectId) form.product.value = String(selectId);
+    };
+    brandAutocomplete(form.brand, (b) => loadProducts(b));
+    if (prefill) {
+      form.label.value = prefill.label;
+      form.category.value = prefill.category;
+      form.brand.value = prefill.brand?.name ?? prefill.brandName ?? "";
+      if (prefill.brand) loadProducts({ slug: prefill.brand.slug, name: prefill.brand.name }, prefill.product?.id);
+      else brand = { name: form.brand.value };
+    }
     form.product.addEventListener("change", () => {
       const p = products.find((x) => String(x.id) === form.product.value);
       if (p) { form.label.value = p.name; form.category.value = p.category; }
@@ -1089,9 +1161,10 @@ async function createPage() {
         ...(p ? { productId: p.id, productName: p.name } : {}),
         ...(form.url.value ? { url: form.url.value } : {}),
       });
+      onDone?.();
       draw();
     });
-    form.brand.focus();
+    (form.brand.value ? form.label : form.brand).focus();
   }
 
   $("#share").addEventListener("click", safe(async (e) => {
@@ -1126,7 +1199,7 @@ async function dashboardPage(params) {
       ${[["Tagged items", d.tags.total], ["To review", d.tags.pending], ["Looks", d.posts], ["Creators", d.creators], ["Shop clicks · 7d", d.clicks.last7Days], ["Shop clicks · 30d", d.clicks.last30Days]]
         .map(([l, v]) => `<div class="stat"><div class="muted small">${l}</div><div class="v">${n(v)}</div></div>`).join("")}
     </div>
-    <div class="seg-tabs">${[["review", `Review tags (${d.tags.pending})`], ["all", "All tags"], ["products", "Products"], ["profile", "Brand profile"]]
+    <div class="seg-tabs">${[["review", `Review tags (${d.tags.pending})`], ["all", "All tags"], ["products", "Products"], ["commissions", "Commissions"], ["profile", "Brand profile"]]
       .map(([k, l]) => `<a class="chip ${k === tab ? "on" : ""}" style="text-transform:none" href="#/brand?tab=${k}">${l}</a>`).join("")}</div>
     <div class="card" id="panel"></div></div>`;
   const panel = $("#panel");
@@ -1178,6 +1251,8 @@ async function dashboardPage(params) {
       await api(`/brand/products/${id}`, { method: "DELETE" });
       route();
     }));
+  } else if (tab === "commissions") {
+    await commissionsPanel(panel);
   } else {
     panel.innerHTML = `<form id="brand">
       <div class="row" style="margin-bottom:12px">${avatar({ name: d.brand.name, avatarUrl: d.brand.logoUrl }, 56)}
@@ -1201,6 +1276,96 @@ async function dashboardPage(params) {
   }
 }
 
+/** "USD 12.40 · EUR 3.00" from { USD: { PENDING, APPROVED, REVERSED } } for the given statuses. */
+function sumTotals(totals, statuses) {
+  const parts = Object.entries(totals).map(([cur, t]) => {
+    const v = statuses.reduce((a, st) => a + Number(t[st]), 0);
+    return `${cur} ${v.toFixed(2)}`;
+  });
+  return parts.length ? parts.join(" · ") : "—";
+}
+const statusBadge = (st) => `<span class="${st === "APPROVED" ? "ok-badge" : st === "REVERSED" ? "bad-badge" : "warn-badge"}">${st.toLowerCase()}</span>`;
+
+async function commissionsPanel(panel) {
+  const data = await api("/brand/sales");
+  const pr = data.program;
+  const origin = location.origin;
+  panel.innerHTML = `
+    <div class="b">Commission program</div>
+    <p class="muted small">Pay a commission when someone buys after tapping Shop on a look that tags your products.
+      Creators get ${pr.creatorSharePercent}% of each commission. Orders stay pending for ${pr.approvalDays} days so refunds can be reversed.</p>
+    <form id="program" class="form-grid">
+      <label>Commission (% of order)<input class="input" name="percent" type="number" min="0" max="50" step="0.5" value="${pr.commissionPercent ?? ""}" placeholder="e.g. 10" /></label>
+      <label>Attribution window (days)<input class="input" name="days" type="number" min="1" max="90" value="${pr.attributionDays}" /></label>
+      <button class="btn primary">${pr.enabled ? "Save" : "Turn on"}</button>
+      ${pr.enabled ? `<button class="btn" type="button" id="disable">Turn off</button>` : ""}
+    </form>
+    <div class="stat-row">
+      <div class="stat"><div class="muted small">Sales via Stylegram</div><div class="v" style="font-size:18px">${esc(sumTotals(data.salesTotals, ["PENDING", "APPROVED"]))}</div></div>
+      <div class="stat"><div class="muted small">Commission pending</div><div class="v" style="font-size:18px">${esc(sumTotals(data.commissionTotals, ["PENDING"]))}</div></div>
+      <div class="stat"><div class="muted small">Commission approved</div><div class="v" style="font-size:18px">${esc(sumTotals(data.commissionTotals, ["APPROVED"]))}</div></div>
+    </div>
+    <div class="b" style="margin-top:8px">Connect your store</div>
+    <p class="muted small">Stylegram adds <code>sg_click</code> to every Shop link. Keep it (for example in a cookie) until checkout, then have your
+      <b>server</b> report the order. Never put your API key in your website's code.</p>
+    <div class="row" style="margin:8px 0">
+      <span class="muted small">API key: ${pr.apiKeyPrefix ? `<code>${esc(pr.apiKeyPrefix)}…</code>` : "none yet"}</span>
+      <button class="btn" id="rotate">${pr.apiKeyPrefix ? "Replace key" : "Create API key"}</button>
+    </div>
+    <div id="newkey"></div>
+    <pre class="code">curl -X POST ${esc(origin)}/api/v1/conversions \\
+  -H "Authorization: Bearer $STYLEGRAM_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{"clickId":"&lt;sg_click from the landing URL&gt;","orderId":"1001","amount":"89.90","currency":"USD"}'
+
+# Refund or cancellation:
+curl -X POST ${esc(origin)}/api/v1/conversions/1001/reverse -H "Authorization: Bearer $STYLEGRAM_API_KEY"</pre>
+    <div class="b" style="margin-top:16px">Recent sales</div>
+    ${data.sales.length ? `<table class="table"><tbody>${data.sales.map((c) => `<tr>
+      <td><b>${esc(c.item ?? "Item")}</b><div class="muted small">order ${esc(c.orderId)} · ${c.creator ? `@${esc(c.creator)}` : "—"} · ${new Date(c.createdAt).toLocaleDateString()}</div></td>
+      <td>${esc(c.currency)} ${esc(c.amount)}</td><td>${esc(c.currency)} ${esc(c.commission)}</td><td>${statusBadge(c.status)}</td></tr>`).join("")}</tbody></table>`
+      : `<p class="muted small">No sales reported yet.</p>`}`;
+  $("#program", panel).addEventListener("submit", safe(async (e) => {
+    e.preventDefault();
+    const f = Object.fromEntries(new FormData(e.target));
+    if (f.percent === "") throw new Error("Enter a commission percentage");
+    await api("/brand/program", { method: "PUT", body: { commissionPercent: Number(f.percent), attributionDays: Number(f.days) } });
+    toast("Commission program saved.");
+    route();
+  }));
+  $("#disable", panel)?.addEventListener("click", safe(async () => {
+    if (!confirm("Turn off commissions? New sales won't be attributed.")) return;
+    await api("/brand/program", { method: "PUT", body: { commissionPercent: null } });
+    route();
+  }));
+  $("#rotate", panel).addEventListener("click", safe(async () => {
+    if (pr.apiKeyPrefix && !confirm("Replace your API key? The old key stops working immediately.")) return;
+    const { apiKey } = await api("/brand/api-key", { method: "POST" });
+    $("#newkey", panel).innerHTML = `<div class="card" style="background:var(--btn-2);border:0">
+      <div class="b small">Your new API key (shown only once; store it on your server)</div>
+      <code class="key">${esc(apiKey)}</code> <button class="btn" id="copykey">Copy</button></div>`;
+    $("#copykey", panel).addEventListener("click", () => navigator.clipboard?.writeText(apiKey).then(() => toast("Copied.")));
+  }));
+}
+
+async function earningsPage() {
+  const e = await api("/me/earnings");
+  view.innerHTML = `<div class="page" style="max-width:720px"><h1>Earnings</h1>
+    <p class="muted">When someone buys an item you tagged, from a brand with a Stylegram commission program, you earn
+      ${e.creatorSharePercent}% of the commission. Earnings stay pending for ${e.approvalDays} days (the refund window), then they're approved.</p>
+    <div class="stat-row">
+      <div class="stat"><div class="muted small">Pending</div><div class="v" style="font-size:20px">${esc(sumTotals(e.totals, ["PENDING"]))}</div></div>
+      <div class="stat"><div class="muted small">Approved</div><div class="v" style="font-size:20px">${esc(sumTotals(e.totals, ["APPROVED"]))}</div></div>
+    </div>
+    <div class="card">${e.sales.length ? `<table class="table"><tbody>${e.sales.map((c) => `<tr>
+      <td><b>${esc(c.item ?? "Item")}</b><div class="muted small"><a href="#/b/${esc(c.brand.slug)}">${esc(c.brand.name)}</a> · ${new Date(c.createdAt).toLocaleDateString()}
+        ${c.postId ? ` · <a class="mention" href="#/p/${c.postId}">look</a>` : ""}</div></td>
+      <td>${esc(c.currency)} ${esc(c.creatorEarnings)}</td><td>${statusBadge(c.status)}</td></tr>`).join("")}</tbody></table>`
+      : `<div class="grid-empty" style="padding:30px 0"><div class="circle-icon">${icons.bag()}</div><div class="big" style="font-size:20px">No earnings yet</div>
+          Tag the exact products you're wearing. When people shop your looks, sales show up here.</div>`}</div>
+    <p class="muted small">Payouts aren't automatic yet. Approved earnings are paid out by the Stylegram team.</p></div>`;
+}
+
 async function adminPage() {
   const q = await api("/admin/queue");
   view.innerHTML = `<div class="page" id="admin"><h1>Admin</h1>
@@ -1213,6 +1378,11 @@ async function adminPage() {
       ${q.claims.length ? `<table class="table"><tbody>${q.claims.map((c) => `<tr><td><b>${esc(c.name)}</b>
         <div class="muted small">claimed by @${esc(c.username)} (${esc(c.email)}) ${c.message ? `· “${esc(c.message)}”` : ""}</div></td>
         <td><div class="row" style="justify-content:flex-end"><button class="btn primary" data-claim="${c.id}" data-approve="1">Approve</button><button class="btn" data-claim="${c.id}">Reject</button></div></td></tr>`).join("")}</tbody></table>` : `<p class="muted">None</p>`}
+    </div>
+    <div class="card"><div class="b" style="margin-bottom:4px">Blocked uploads</div>
+      <p class="muted small" style="margin-top:0">Photos the AI check rejected. The images themselves are never stored.</p>
+      ${q.blockedUploads.length ? `<table class="table"><tbody>${q.blockedUploads.map((m) => `<tr><td><b>${m.username ? `@${esc(m.username)}` : "deleted user"}</b>
+        <div class="muted small">${esc(m.verdict.replaceAll("_", " "))} · ${esc(m.reason)}</div></td><td class="muted small">${new Date(m.created_at).toLocaleString()}</td></tr>`).join("")}</tbody></table>` : `<p class="muted">None</p>`}
     </div></div>`;
   $("#admin").addEventListener("click", safe(async (e) => {
     const { verify, claim, approve } = e.target.dataset;

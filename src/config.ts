@@ -68,6 +68,24 @@ export const config = {
     fullWidth: 1440,
     thumbSize: 480,
   },
+  ai: {
+    /** Vision model used for photo safety checks and item suggestions. */
+    model: process.env.AI_MODEL ?? "claude-opus-5-5",
+    /** Item-suggestion requests per user per hour (cached photos don't count). */
+    analysesPerHour: Number(process.env.AI_ANALYSES_PER_HOUR ?? 60),
+  },
+  commissions: {
+    /** Share of each commission paid to the creator who tagged the item; the rest is the platform's. */
+    creatorSharePercent: Number(process.env.CREATOR_SHARE_PERCENT ?? 50),
+    /** Days a conversion stays pending (refund window) before it's approved. */
+    approvalDays: Number(process.env.COMMISSION_APPROVAL_DAYS ?? 30),
+    /**
+     * Optional affiliate-network link for brands without their own Stylegram program, e.g. a
+     * Skimlinks or Sovrn redirect. `{url}` is replaced with the encoded product URL and `{click}`
+     * with Stylegram's click id (pass it as the network's sub-id to attribute sales to creators).
+     */
+    affiliateLinkTemplate: process.env.AFFILIATE_LINK_TEMPLATE ?? "",
+  },
   /** Appended to outbound product links so brands can attribute traffic. */
   utmSource: process.env.UTM_SOURCE ?? "stylegram",
 };
