@@ -1,5 +1,5 @@
 // Stylegram service worker: makes the app installable and lets it open offline.
-const VERSION = "v6";
+const VERSION = "v7";
 const SHELL_CACHE = `shell-${VERSION}`;
 const MEDIA_CACHE = `media-${VERSION}`;
 const FONT_CACHE = `fonts-${VERSION}`;
@@ -11,6 +11,7 @@ const SHELL = [
   "/",
   "/app.js",
   "/icons.js",
+  "/i18n.js",
   "/style.css",
   "/manifest.webmanifest",
   "/icons/icon-192.png",

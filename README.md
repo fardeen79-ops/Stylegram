@@ -19,14 +19,15 @@ Dune Footwear, Al Seef Leather, Saffron & Sand) are made up, and their catalogs 
 
 ## Built for the UAE
 
+- **Arabic and English:** see [Arabic, English and translation](#arabic-english-and-translation) below.
 - **Currency and formatting:** prices, commissions and earnings default to **AED**. Numbers, prices and dates
-  use UAE (`en-AE`) formatting, e.g. "AED 1,250.00". Brands can still list a product in another currency.
+  use UAE formatting (`en-AE` or `ar-AE`, Western digits in both), e.g. "AED 1,250.00". Brands can still list a product in another currency.
   Set `DEFAULT_CURRENCY`, `MARKET_COUNTRY` or `MARKET_LOCALE` to launch somewhere else.
 - **Modest and traditional wear:** `abaya`, `kandura` and `scarf` (shayla, hijab, ghutra) are first-class
   categories in tagging and Explore. The AI recognises them too.
 - **Brand verification:** brands can give their **UAE trade licence number** when they sign up or claim a
   page. Admins see it in the verification queue.
-- **Demo content:** Dubai, Abu Dhabi and Sharjah creators, UAE brands with AED prices, and two brands
+- **Demo content:** Dubai, Abu Dhabi and Sharjah creators (Noor posts and uses the app in Arabic), UAE brands with AED prices, and two brands
   running commission programs (10–12%).
 
 The demo posts use real photos from [Unsplash](https://unsplash.com), which are free to use under the
@@ -34,6 +35,27 @@ The demo posts use real photos from [Unsplash](https://unsplash.com), which are 
 connection. Any photo that can't be downloaded is replaced with a plain placeholder. Each post opens with an
 untagged "full look" photo, followed by single-product shots tagged at the item. The photo list, with
 Unsplash IDs and photographers, is in `src/seed.ts`.
+
+## Arabic, English and translation
+
+- **Choose the language:** everyone picks **English** or **العربية**. In Arabic the whole interface switches to
+  right-to-left, with an Arabic font (IBM Plex Sans Arabic) and Arabic plurals, dates and prices.
+  - Change it in **Settings → Language**, from the **More** menu, or with the link under the log-in and sign-up
+    forms.
+  - The choice is saved to the account, so it follows you to other devices. Before logging in, the app uses the
+    last choice on that device, or the browser's language.
+- **See translation:** captions, comments and bios written in another language get a **See translation** link.
+  It translates the text into the reader's chosen language, and **See original** switches back. The app detects
+  each text's language when it's posted.
+- **How translation works:** translations use Claude (`ANTHROPIC_API_KEY`, model `AI_MODEL`). Each text is
+  translated once per language and cached, so later readers get it instantly at no cost. Without an API key the
+  links are hidden.
+  - **Cost:** a caption costs well under 1 US cent.
+  - **Spending cap:** `AI_TRANSLATIONS_PER_HOUR` (default 120) limits new translations per user.
+  - @mentions, #hashtags, emoji, links and brand names are kept as written. The text is treated as content to
+    translate, never as instructions.
+
+Brand names, product names and server validation messages are shown as entered (usually English).
 
 ## Look and feel
 
@@ -132,7 +154,7 @@ check `/api/health`. Expect about **$5/month** on the Hobby plan.
    | `ADMIN_PASSWORD` | a long password (12+ characters) |
    | `SEED_DEMO` | `true` to fill the site with the demo posts on first start (optional) |
    | `DEMO_PASSWORD` | password for the demo accounts (optional; otherwise one is generated and printed in the deploy logs) |
-   | `ANTHROPIC_API_KEY` | **needed for the nudity check** and AI suggestions (from console.anthropic.com) |
+   | `ANTHROPIC_API_KEY` | **needed for the nudity check**, AI suggestions and translation (from console.anthropic.com) |
 
    `JWT_SECRET` is optional. If it isn't set, a secret is generated once and kept on the volume.
 4. **Get a link.** Go to **Settings → Networking → Generate Domain**, which gives you
@@ -220,13 +242,14 @@ All JSON endpoints are under `/api`. Send `Authorization: Bearer <token>` where 
 | Area | Endpoints |
 | --- | --- |
 | Auth | `POST /auth/register` (`accountType: PERSONAL\|BRAND`, `brand: {name, website}`), `POST /auth/login` |
-| Me | `GET/PATCH /me`, `PUT /me/avatar` (multipart `avatar`), `GET /me/saved` |
+| Me | `GET/PATCH /me` (`language: en\|ar`), `PUT /me/avatar` (multipart `avatar`), `GET /me/saved` |
 | Users | `GET /users?q=`, `GET /users/:u`, `GET /users/:u/posts`, `PUT/DELETE /users/:u/follow` |
 | Posts | `POST /posts` (multipart: `images[]`, `caption`, `tags` as a JSON array), `GET/PATCH/DELETE /posts/:id`, `GET /feed`, `GET /explore?category=&q=` |
 | Tags | `POST /posts/:id/tags`, `DELETE /tags/:id`, `GET /t/:id` (outbound redirect) |
 | Engagement | `PUT/DELETE /posts/:id/like`, `PUT/DELETE /posts/:id/save`, `GET/POST /posts/:id/comments`, `DELETE /comments/:id` |
 | Brands | `GET /brands?q=`, `GET /brands/:slug`, `GET /brands/:slug/products`, `GET /brands/:slug/posts?product=` |
 | Brand admin | `GET /brand/dashboard`, `PATCH /brand`, `PUT /brand/logo`, `GET/POST /brand/products`, `PATCH/DELETE /brand/products/:id`, `GET /brand/tags?status=`, `POST /brand/tags/:id/review` |
+| Translation | `GET /translate/status`, `POST /translate` (`{kind: post\|comment\|bio, id}`; translates into the user's language) |
 | Site admin | `GET /admin/queue`, `POST /admin/brands/:slug/verify`, `POST /admin/claims/:id` |
 
 A tag in `POST /posts` looks like this:
@@ -255,9 +278,10 @@ height.
 | `UTM_SOURCE` | `stylegram` | |
 | `DEFAULT_CURRENCY` | `AED` | Currency for new products and examples |
 | `MARKET_COUNTRY`, `MARKET_LOCALE` | `AE`, `en-AE` | Launch market |
-| `ANTHROPIC_API_KEY` | none | Turns on photo safety checks and item suggestions |
-| `AI_MODEL` | `claude-opus-5-5` | Vision model |
+| `ANTHROPIC_API_KEY` | none | Turns on photo safety checks, item suggestions and translation |
+| `AI_MODEL` | `claude-opus-5-5` | Model for photo checks, suggestions and translation |
 | `AI_ANALYSES_PER_HOUR` | `60` | Suggestion requests per user per hour |
+| `AI_TRANSLATIONS_PER_HOUR` | `120` | New (uncached) translations per user per hour |
 | `CREATOR_SHARE_PERCENT` | `50` | Creator's share of each commission |
 | `COMMISSION_APPROVAL_DAYS` | `30` | Refund window before a commission is approved |
 | `AFFILIATE_LINK_TEMPLATE` | none | Affiliate-network link for brands without a program |

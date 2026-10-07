@@ -44,6 +44,8 @@ export const icons = {
   chart: (on) => svg(`<rect x="4" y="11" width="4" height="9" rx="1.5" fill="currentColor" fill-opacity="${on ? 1 : 0.12}"/><rect x="10" y="4" width="4" height="16" rx="1.5" fill="currentColor" fill-opacity="${on ? 1 : 0.12}"/><rect x="16" y="8" width="4" height="12" rx="1.5" fill="currentColor" fill-opacity="${on ? 1 : 0.12}"/>`),
   shield: () => svg(`<path d="M12 3 4.5 6v5.5c0 4.4 3.2 8.2 7.5 9.5 4.3-1.3 7.5-5.1 7.5-9.5V6z" fill="currentColor" fill-opacity="0.12"/><path d="m9 12 2 2 4-4"/>`),
   wifiOff: () => svg(`<path d="M2 8.8a15 15 0 0 1 4.2-2.6M9.5 5.2A15 15 0 0 1 22 8.8M5 12.5a10 10 0 0 1 3.5-2M12.9 10A10 10 0 0 1 19 12.5M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/><path d="M3 3l18 18"/>`, { size: 28 }),
+  globe: () => svg(`<circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity="0.12"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/>`, { size: 20 }),
+  translate: () => svg(`<path d="M4 5h9M8.5 3v2M6 5c.6 3 2.6 5.6 5.5 7M11 5c-.7 3.4-3 6.3-6.5 8"/><path d="m12.5 21 4-10 4 10M14 17.5h5"/>`, { size: 14 }).replace('class="ic"', 'class="ic inline-ic"'),
   download: () => svg(`<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>`),
   iosShare: () => svg(`<path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/>`, { size: 18 }).replace('class="ic"', 'class="ic inline-ic"'),
   /** Verified brand: a rounded badge in the Stylegram gradient. */

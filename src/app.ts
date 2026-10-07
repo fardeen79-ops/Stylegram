@@ -73,6 +73,8 @@ import {
   updateProgram,
 } from "./services/commissions.js";
 import { assertImageAllowed, recentModerationEvents, suggestionsFor } from "./services/vision.js";
+import { needsModel, translateContent } from "./services/translations.js";
+import { UI_LANGUAGES } from "./lang.js";
 
 // ---- Schemas ----------------------------------------------------------------
 
@@ -105,6 +107,7 @@ const schemas = {
     password: z.string().min(8).max(128),
     displayName: z.string().trim().min(1).max(60),
     accountType: z.enum(["PERSONAL", "BRAND"]).default("PERSONAL"),
+    language: z.enum(UI_LANGUAGES).optional(),
     brand: z
       .object({
         name: z.string().trim().min(1).max(60),
@@ -115,7 +118,12 @@ const schemas = {
       .optional(),
   }),
   login: z.object({ login: z.string().toLowerCase(), password: z.string() }),
-  profile: z.object({ displayName: z.string().trim().min(1).max(60).optional(), bio: z.string().max(300).optional() }),
+  profile: z.object({
+    displayName: z.string().trim().min(1).max(60).optional(),
+    bio: z.string().max(300).optional(),
+    language: z.enum(UI_LANGUAGES).optional(),
+  }),
+  translate: z.object({ kind: z.enum(["post", "comment", "bio"]), id: z.union([z.string(), z.number()]).transform(String) }),
   caption: z.string().max(2200).default(""),
   tags: z.array(tagBody.and(z.object({ image: z.number().int().min(0) }))).max(100).default([]),
   captionBody: z.object({ caption: z.string().max(2200) }),
@@ -216,6 +224,7 @@ export function createApp(ctx: Ctx) {
 
   const auth = requireAuth(ctx);
   const aiLimit = rateLimiter(ctx.config.ai.analysesPerHour, 60 * 60 * 1000);
+  const translateLimit = rateLimiter(ctx.config.ai.translationsPerHour, 60 * 60 * 1000);
   // Public pages (profiles, posts, brands) work signed out, but personalise when a token is sent.
   const optionalAuth = (req: Request, res: Response, next: NextFunction) =>
     req.headers.authorization ? auth(req, res, next) : next();
@@ -456,6 +465,17 @@ export function createApp(ctx: Ctx) {
     aiLimit(uid(req), ctx.now().getTime());
     const analysis = await assertImageAllowed(ctx, uid(req), req.file.buffer);
     res.json({ allowed: true, suggestions: analysis ? suggestionsFor(ctx, analysis) : [] });
+  });
+
+  // ---- Translation of captions, comments and bios into the reader's language ----
+  api.get("/translate/status", (_req, res) => {
+    res.json({ enabled: Boolean(ctx.translator) });
+  });
+
+  api.post("/translate", auth, async (req, res) => {
+    const { kind, id } = parse(schemas.translate, req.body);
+    if (ctx.translator && needsModel(ctx, uid(req), kind, id)) translateLimit(uid(req), ctx.now().getTime());
+    res.json(await translateContent(ctx, uid(req), kind, id));
   });
 
   // ---- Commissions ----

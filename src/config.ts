@@ -79,6 +79,8 @@ export const config = {
     model: process.env.AI_MODEL ?? "claude-opus-5-5",
     /** Item-suggestion requests per user per hour (cached photos don't count). */
     analysesPerHour: Number(process.env.AI_ANALYSES_PER_HOUR ?? 60),
+    /** New (uncached) translations per user per hour. */
+    translationsPerHour: Number(process.env.AI_TRANSLATIONS_PER_HOUR ?? 120),
   },
   commissions: {
     /** Share of each commission paid to the creator who tagged the item; the rest is the platform's. */

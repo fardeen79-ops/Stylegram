@@ -3,6 +3,7 @@ import type { Category } from "../db.js";
 import { AppError } from "../errors.js";
 import { mediaUrl, type StoredImage } from "../media.js";
 import { normalizeHttpUrl, withUtm } from "../util.js";
+import { detectLang, fromStored, toStored } from "../lang.js";
 import { earnsCommission, newClickId } from "./commissions.js";
 import { brandSummary, findOrCreateBrand, getBrand, getProduct, publicProduct, type BrandRow } from "./brands.js";
 import { getUser, getUserByUsername, userSummary } from "./users.js";
@@ -23,6 +24,7 @@ interface PostRow {
   id: number;
   user_id: number;
   caption: string;
+  caption_lang: string | null;
   created_at: string;
 }
 
@@ -92,8 +94,8 @@ export function createPost(ctx: Ctx, userId: number, images: StoredImage[], capt
   }
   return ctx.db.transaction(() => {
     const info = ctx.db
-      .prepare("INSERT INTO posts (user_id, caption, created_at) VALUES (?, ?, ?)")
-      .run(userId, caption, ctx.now().toISOString());
+      .prepare("INSERT INTO posts (user_id, caption, caption_lang, created_at) VALUES (?, ?, ?, ?)")
+      .run(userId, caption, toStored(detectLang(caption)), ctx.now().toISOString());
     const postId = Number(info.lastInsertRowid);
     const imageIds = images.map((img, i) =>
       Number(
@@ -158,6 +160,7 @@ export function postView(ctx: Ctx, postId: number, viewerId?: number) {
     id: p.id,
     author: userSummary(ctx, getUser(ctx, p.user_id)),
     caption: p.caption,
+    captionLang: fromStored(p.caption_lang),
     images: images.map((img) => ({
       id: img.id,
       url: mediaUrl(img.path),
@@ -191,12 +194,24 @@ function likedBy(ctx: Ctx, postId: number, viewerId?: number) {
   return row ? userSummary(ctx, getUser(ctx, row.user_id)) : null;
 }
 
+interface CommentRow {
+  id: number;
+  user_id: number;
+  body: string;
+  lang: string | null;
+  created_at: string;
+}
+
+function publicComment(ctx: Ctx, c: CommentRow) {
+  return { id: c.id, author: userSummary(ctx, getUser(ctx, c.user_id)), body: c.body, lang: fromStored(c.lang), createdAt: c.created_at };
+}
+
 /** The latest two comments, shown under a post in the feed. */
 function recentComments(ctx: Ctx, postId: number) {
   const rows = ctx.db
     .prepare("SELECT * FROM (SELECT * FROM comments WHERE post_id = ? ORDER BY id DESC LIMIT 2) ORDER BY id")
-    .all(postId) as { id: number; user_id: number; body: string; created_at: string }[];
-  return rows.map((c) => ({ id: c.id, author: userSummary(ctx, getUser(ctx, c.user_id)), body: c.body, createdAt: c.created_at }));
+    .all(postId) as CommentRow[];
+  return rows.map((c) => publicComment(ctx, c));
 }
 
 /** Lightweight card for profile / brand / explore grids. */
@@ -295,7 +310,7 @@ export function deletePost(ctx: Ctx, userId: number, postId: number): string[] {
 
 export function updateCaption(ctx: Ctx, userId: number, postId: number, caption: string): void {
   const p = ownPost(ctx, userId, postId);
-  ctx.db.prepare("UPDATE posts SET caption = ? WHERE id = ?").run(caption, p.id);
+  ctx.db.prepare("UPDATE posts SET caption = ?, caption_lang = ? WHERE id = ?").run(caption, toStored(detectLang(caption)), p.id);
 }
 
 export function addTag(ctx: Ctx, userId: number, postId: number, imageId: number, t: Omit<TagInput, "image">): number {
@@ -362,8 +377,8 @@ export function setSave(ctx: Ctx, userId: number, postId: number, saved: boolean
 export function addComment(ctx: Ctx, userId: number, postId: number, body: string) {
   getPostRow(ctx, postId);
   const info = ctx.db
-    .prepare("INSERT INTO comments (post_id, user_id, body, created_at) VALUES (?, ?, ?, ?)")
-    .run(postId, userId, body, ctx.now().toISOString());
+    .prepare("INSERT INTO comments (post_id, user_id, body, lang, created_at) VALUES (?, ?, ?, ?, ?)")
+    .run(postId, userId, body, toStored(detectLang(body)), ctx.now().toISOString());
   return listComments(ctx, postId).find((c) => c.id === Number(info.lastInsertRowid))!;
 }
 
@@ -371,8 +386,8 @@ export function listComments(ctx: Ctx, postId: number) {
   getPostRow(ctx, postId);
   const rows = ctx.db
     .prepare("SELECT * FROM comments WHERE post_id = ? ORDER BY id LIMIT 500")
-    .all(postId) as { id: number; user_id: number; body: string; created_at: string }[];
-  return rows.map((c) => ({ id: c.id, author: userSummary(ctx, getUser(ctx, c.user_id)), body: c.body, createdAt: c.created_at }));
+    .all(postId) as CommentRow[];
+  return rows.map((c) => publicComment(ctx, c));
 }
 
 export function deleteComment(ctx: Ctx, userId: number, commentId: number): void {

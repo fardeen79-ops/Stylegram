@@ -7,6 +7,7 @@ import type { Ctx } from "./context.js";
 import { openDb } from "./db.js";
 import { seedDemo } from "./demo.js";
 import { ClaudeImageAI } from "./ai.js";
+import { ClaudeTranslator } from "./translate.js";
 
 // Log anything unexpected with a clear message instead of dying silently.
 process.on("unhandledRejection", (err) => console.error("Unhandled error (the server keeps running):", err));
@@ -31,10 +32,11 @@ const db = openDb(config.dbPath);
 const ai = process.env.ANTHROPIC_API_KEY ? new ClaudeImageAI(config.ai.model) : undefined;
 if (!ai) {
   console.warn(
-    "WARNING: ANTHROPIC_API_KEY is not set. Uploads are NOT checked for nudity or sexual content, and AI item suggestions are off.",
+    "WARNING: ANTHROPIC_API_KEY is not set. Uploads are NOT checked for nudity or sexual content, and AI item suggestions and translation are off.",
   );
 }
-const ctx: Ctx = { db, config, now: () => new Date(), ai };
+const translator = process.env.ANTHROPIC_API_KEY ? new ClaudeTranslator(config.ai.model) : undefined;
+const ctx: Ctx = { db, config, now: () => new Date(), ai, translator };
 
 // Decide before creating the admin account whether this is a brand-new, empty database.
 const freshDatabase = (db.prepare("SELECT COUNT(*) AS n FROM users").get() as { n: number }).n === 0;

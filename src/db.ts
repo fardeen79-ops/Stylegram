@@ -1,4 +1,5 @@
 import Database from "better-sqlite3";
+import { backfillLanguages } from "./lang.js";
 
 export type DB = Database.Database;
 
@@ -219,6 +220,21 @@ const MIGRATIONS: string[] = [
   ALTER TABLE brands ADD COLUMN trade_licence TEXT;
   ALTER TABLE brand_claims ADD COLUMN trade_licence TEXT;
   `,
+  // 3: Arabic/English: interface language per user, detected language of user text, translation cache.
+  `
+  ALTER TABLE users ADD COLUMN ui_lang TEXT NOT NULL DEFAULT 'en';
+  ALTER TABLE users ADD COLUMN bio_lang TEXT;
+  ALTER TABLE posts ADD COLUMN caption_lang TEXT;
+  ALTER TABLE comments ADD COLUMN lang TEXT;
+  CREATE TABLE translations (
+    hash       TEXT NOT NULL,
+    target     TEXT NOT NULL,
+    text       TEXT NOT NULL,
+    model      TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (hash, target)
+  );
+  `,
 ];
 
 export function migrate(db: DB): void {
@@ -238,6 +254,7 @@ export function openDb(path: string): DB {
   db.pragma("busy_timeout = 5000");
   db.exec(SCHEMA);
   migrate(db);
+  backfillLanguages(db);
   return db;
 }
 

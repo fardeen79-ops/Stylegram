@@ -3,6 +3,7 @@ import { AppError } from "../errors.js";
 import { mediaUrl } from "../media.js";
 import { hashSecret, verifySecret } from "../security.js";
 import { slugify } from "../util.js";
+import { detectLang, fromStored, toStored, type UiLanguage } from "../lang.js";
 
 export interface UserRow {
   id: number;
@@ -14,6 +15,8 @@ export interface UserRow {
   avatar_path: string | null;
   account_type: "PERSONAL" | "BRAND";
   is_admin: number;
+  ui_lang: string;
+  bio_lang: string | null;
   created_at: string;
 }
 
@@ -23,6 +26,7 @@ export interface RegisterInput {
   password: string;
   displayName: string;
   accountType: "PERSONAL" | "BRAND";
+  language?: UiLanguage;
   /** UAE businesses can give their trade licence number to speed up verification. */
   brand?: { name: string; website: string; message?: string; tradeLicence?: string };
 }
@@ -46,8 +50,8 @@ export function registerUser(ctx: Ctx, input: RegisterInput): { user: UserRow; b
   const run = db.transaction(() => {
     const info = db
       .prepare(
-        `INSERT INTO users (username, email, password_hash, display_name, account_type, is_admin, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO users (username, email, password_hash, display_name, account_type, is_admin, ui_lang, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         input.username,
@@ -56,6 +60,7 @@ export function registerUser(ctx: Ctx, input: RegisterInput): { user: UserRow; b
         input.displayName,
         input.accountType,
         ctx.config.adminUsernames.includes(input.username) ? 1 : 0,
+        input.language ?? "en",
         now,
       );
     const userId = Number(info.lastInsertRowid);
@@ -118,6 +123,7 @@ export function profile(ctx: Ctx, u: UserRow, viewerId?: number) {
   return {
     ...userSummary(ctx, u),
     bio: u.bio,
+    bioLang: fromStored(u.bio_lang),
     accountType: u.account_type,
     posts: count("SELECT COUNT(*) AS n FROM posts WHERE user_id = ?"),
     followers: count("SELECT COUNT(*) AS n FROM follows WHERE followee_id = ?"),
@@ -144,16 +150,22 @@ export function me(ctx: Ctx, u: UserRow) {
     ...profile(ctx, u, u.id),
     email: u.email,
     isAdmin: u.is_admin === 1,
+    language: u.ui_lang,
     ownedBrand: brand ? { slug: brand.slug, name: brand.name, verified: brand.verified === 1 } : null,
     brandClaim: claim ?? null,
   };
 }
 
-export function updateProfile(ctx: Ctx, userId: number, input: { displayName?: string; bio?: string }): void {
+export function updateProfile(
+  ctx: Ctx,
+  userId: number,
+  input: { displayName?: string; bio?: string; language?: UiLanguage },
+): void {
   const u = getUser(ctx, userId);
+  const bio = input.bio ?? u.bio;
   ctx.db
-    .prepare("UPDATE users SET display_name = ?, bio = ? WHERE id = ?")
-    .run(input.displayName ?? u.display_name, input.bio ?? u.bio, userId);
+    .prepare("UPDATE users SET display_name = ?, bio = ?, bio_lang = ?, ui_lang = ? WHERE id = ?")
+    .run(input.displayName ?? u.display_name, bio, toStored(detectLang(bio)), input.language ?? u.ui_lang, userId);
 }
 
 export function setAvatar(ctx: Ctx, userId: number, path: string): string | null {

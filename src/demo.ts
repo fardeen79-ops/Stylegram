@@ -91,8 +91,8 @@ export async function seedDemo(ctx: Ctx, opts: { password: string; log?: Pick<Co
   const log = opts.log ?? console;
   fallbacks = 0;
   const PASSWORD = opts.password;
-  const person = (username: string, displayName: string, bio: string) => {
-    const { user } = registerUser(ctx, { username, email: `${username}@example.com`, password: PASSWORD, displayName, accountType: "PERSONAL" });
+  const person = (username: string, displayName: string, bio: string, language: "en" | "ar" = "en") => {
+    const { user } = registerUser(ctx, { username, email: `${username}@example.com`, password: PASSWORD, displayName, accountType: "PERSONAL", language });
     updateProfile(ctx, user.id, { bio });
     return user;
   };
@@ -129,7 +129,7 @@ export async function seedDemo(ctx: Ctx, opts: { password: string; log?: Pick<Co
   p(saffron.user.id, "Linen Shayla – Sand", "https://saffronsand.example/linen-shayla", 120, "scarf");
   p(saffron.user.id, "Kaftan Dress – Rose", "https://saffronsand.example/kaftan-rose", 480, "dress");
 
-  const noor = person("noor.styles", "Noor Al Hashimi", "Dubai · modest fashion & weekend souk runs");
+  const noor = person("noor.styles", "Noor Al Hashimi", "دبي · أزياء محتشمة وجولات في السوق نهاية الأسبوع", "ar");
   const omar = person("omar.fits", "Omar Haddad", "Abu Dhabi · menswear, kept minimal");
   const priya = person("priya.wears", "Priya Menon", "Sharjah · colour, always");
 
@@ -168,7 +168,7 @@ export async function seedDemo(ctx: Ctx, opts: { password: string; log?: Pick<Co
   await post(priya.id, "Souk run in Deira with my favourite tote", ["toteInHand"], [
     centre(0, { label: "Market tote", category: "bag", brandSlug: alseef.slug, productId: tote.id }),
   ]);
-  const p7 = await post(noor.id, "Eid edit ✨ The Midnight Crepe abaya from @saffronsand #modestfashion #uae", ["abaya"], [
+  const p7 = await post(noor.id, "إطلالة العيد ✨ عباية الكريب الليلية من @saffronsand تفاصيل الأكمام رائعة #موضة_محتشمة #uae", ["abaya"], [
     centre(0, { label: "Black abaya", category: "abaya", brandSlug: saffron.slug, productId: abaya.id }),
   ]);
   await post(noor.id, "Desert drive essentials 🌵 #uae", ["outdoorFlatlay"], []);
@@ -185,6 +185,8 @@ export async function seedDemo(ctx: Ctx, opts: { password: string; log?: Pick<Co
   addComment(ctx, priya.id, p1, "Need that tote!");
   addComment(ctx, noor.id, p2, "Saadiyat sunsets never miss.");
   addComment(ctx, priya.id, p7, "Love this abaya 😍 the detail on the cuffs!");
+  addComment(ctx, omar.id, p7, "ما شاء الله، اختيار رائع 👌");
+  addComment(ctx, noor.id, p1, "شكرًا! الجينز من @creekdenim");
 
   if (fallbacks) log.warn(`${fallbacks} photo(s) couldn't be downloaded and were replaced with placeholders.`);
 }

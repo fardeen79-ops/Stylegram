@@ -224,7 +224,7 @@ describe("database migrations", () => {
     db.prepare("INSERT INTO brands (slug, name, created_at) VALUES ('old', 'Old Brand', '2026-01-01')").run();
     migrate(db);
     migrate(db); // idempotent
-    expect(db.pragma("user_version", { simple: true })).toBe(2);
+    expect(db.pragma("user_version", { simple: true })).toBe(3);
     const brand = db.prepare("SELECT slug, commission_bps, attribution_days, trade_licence FROM brands").get();
     expect(brand).toEqual({ slug: "old", commission_bps: null, attribution_days: 30, trade_licence: null });
     expect(db.prepare("SELECT COUNT(*) AS n FROM conversions").get()).toEqual({ n: 0 });
