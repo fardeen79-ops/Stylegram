@@ -1,35 +1,60 @@
 import { randomBytes } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 
-const DEV_SECRET_FILE = ".jwt-secret";
+const production = process.env.NODE_ENV === "production";
+
+/**
+ * Where the database and uploaded photos live. On Railway this is the attached volume
+ * (Railway sets RAILWAY_VOLUME_MOUNT_PATH automatically); locally it's the project folder.
+ */
+const dataDir = process.env.DATA_DIR ?? process.env.RAILWAY_VOLUME_MOUNT_PATH ?? ".";
+
+/** Read a generated secret from `file`, creating it on first use (mode 600). */
+function persistedSecret(file: string): string {
+  if (existsSync(file)) return readFileSync(file, "utf8").trim();
+  mkdirSync(dirname(file), { recursive: true });
+  const secret = randomBytes(32).toString("hex");
+  writeFileSync(file, secret, { mode: 0o600 });
+  return secret;
+}
 
 function jwtSecret(): string {
   const s = process.env.JWT_SECRET;
   if (s) return s;
-  if (process.env.NODE_ENV === "production") throw new Error("JWT_SECRET must be set in production");
   if (process.env.NODE_ENV === "test" || process.env.VITEST) return randomBytes(32).toString("hex");
-  // Development: keep a generated secret in a local, git-ignored file so restarts don't log everyone out.
+  if (production) {
+    // No JWT_SECRET set: keep a generated one on the persistent data volume, never in the image.
+    if (dataDir === ".") throw new Error("Set JWT_SECRET, or DATA_DIR / a Railway volume, in production");
+    return persistedSecret(join(dataDir, ".jwt-secret"));
+  }
+  // Development: a git-ignored local file, so restarts don't log everyone out.
   try {
-    if (existsSync(DEV_SECRET_FILE)) return readFileSync(DEV_SECRET_FILE, "utf8").trim();
-    const secret = randomBytes(32).toString("hex");
-    writeFileSync(DEV_SECRET_FILE, secret, { mode: 0o600 });
-    return secret;
+    return persistedSecret(".jwt-secret");
   } catch {
     return randomBytes(32).toString("hex");
   }
 }
 
 export const config = {
+  production,
   port: Number(process.env.PORT ?? 3002),
-  dbPath: process.env.DB_PATH ?? "stylegram.db",
-  uploadDir: process.env.UPLOAD_DIR ?? "uploads",
+  dataDir,
+  dbPath: process.env.DB_PATH ?? join(dataDir, "stylegram.db"),
+  uploadDir: process.env.UPLOAD_DIR ?? join(dataDir, "uploads"),
   jwtSecret: jwtSecret(),
   jwtTtl: process.env.JWT_TTL ?? "7d",
-  /** Usernames that get admin rights (brand verification and claims) when they register. */
-  adminUsernames: (process.env.ADMIN_USERNAMES ?? "admin")
-    .split(",")
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean),
+  /**
+   * Development only: usernames that get admin rights when they register. Never used in
+   * production, where anyone could register the name first; there the admin account is
+   * created at startup from ADMIN_USERNAME / ADMIN_PASSWORD instead (see bootstrap.ts).
+   */
+  adminUsernames: production
+    ? []
+    : (process.env.ADMIN_USERNAMES ?? "admin")
+        .split(",")
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean),
   upload: {
     maxFileBytes: 10 * 1024 * 1024,
     maxImagesPerPost: 10,

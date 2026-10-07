@@ -350,3 +350,27 @@ describe("social context", () => {
     expect(sugg).toEqual([expect.objectContaining({ username: "cat", reason: "Followed by 1 you follow" })]);
   });
 });
+
+describe("production admin setup", () => {
+  it("never grants admin by username at registration when no admin usernames are configured", async () => {
+    const t = setup();
+    t.ctx.config.adminUsernames = []; // production behaviour
+    const admin = await t.user("admin");
+    expect(admin.body.user.isAdmin).toBe(false);
+  });
+
+  it("creates the configured admin, and won't promote someone else who took the name", async () => {
+    const { ensureAdmin } = await import("../src/bootstrap.js");
+    const t = setup();
+    t.ctx.config.adminUsernames = [];
+    const quiet = { log: () => {}, error: () => {} } as unknown as Console;
+    ensureAdmin(t.ctx, "Owner", "correct horse battery", quiet);
+    const ok = await t.http.post("/api/auth/login").send({ login: "owner", password: "correct horse battery" }).expect(200);
+    expect(ok.body.user.isAdmin).toBe(true);
+
+    const squatter = await t.user("boss");
+    ensureAdmin(t.ctx, "boss", "some other long password", quiet);
+    expect((await squatter.get("/api/me").expect(200)).body.isAdmin).toBe(false);
+    ensureAdmin(t.ctx, "x", "short", quiet); // invalid input is ignored
+  });
+});

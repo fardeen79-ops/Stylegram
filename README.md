@@ -36,6 +36,40 @@ The web app follows the familiar Instagram layout, with its own name, logo and i
   "Create new post" flow with drag-and-drop and tap-to-tag.
 - **Everything else:** bottom-sheet menus, light and dark mode, and @mentions and #hashtags as links.
 
+## Deploy to Railway
+
+The repo is ready for [Railway](https://railway.com): `railway.json` tells it to build the `Dockerfile` and
+check `/api/health`. Expect about **$5/month** on the Hobby plan.
+
+1. **Create the project.** Sign in at railway.com with GitHub, pick the **Hobby** plan, then
+   **New Project → Deploy from GitHub repo → `stylegram`**. If the repo isn't listed, let Railway's GitHub
+   app access it.
+2. **Add a volume.** This is where the database and photos live; without it, everything is lost on each
+   deploy. On the project canvas, right-click the service → **Attach volume**, and set the mount path to
+   **`/data`**. The app finds it automatically through `RAILWAY_VOLUME_MOUNT_PATH`.
+3. **Set variables.** In the service's **Variables** tab:
+
+   | Variable | Value |
+   | --- | --- |
+   | `ADMIN_USERNAME` | your admin username, e.g. `fardeen` |
+   | `ADMIN_PASSWORD` | a long password (12+ characters) |
+   | `SEED_DEMO` | `true` to fill the site with the demo posts on first start (optional) |
+   | `DEMO_PASSWORD` | password for the demo accounts (optional; otherwise one is generated and printed in the deploy logs) |
+
+   `JWT_SECRET` is optional. If it isn't set, a secret is generated once and kept on the volume.
+4. **Get a link.** Go to **Settings → Networking → Generate Domain**, which gives you
+   `https://<name>.up.railway.app`. If it asks for a port, use the one in the deploy logs
+   ("listening on port …").
+5. **Open it on your phone** and tap **Install** (Android) or **Add** (iPhone). It's https, so installing
+   works.
+
+**Notes**
+- Keep the service at **1 replica**. The SQLite database lives on the single volume.
+- Redeploys keep all data (it's on the volume). A service with a volume has a few seconds of downtime while
+  it switches over.
+- Railway also offers volume backups. Turn them on once real people use the site.
+- To use your own domain, go to **Settings → Networking → Custom Domain** and add the DNS record it shows.
+
 ## Install it on your phone (app version)
 
 Stylegram is an installable web app (a PWA). Once added to your home screen, it gets its own icon, opens
@@ -132,11 +166,14 @@ height.
 
 | Variable | Default | |
 | --- | --- | --- |
-| `PORT` | `3002` | |
-| `DB_PATH` | `stylegram.db` | SQLite file |
-| `UPLOAD_DIR` | `uploads` | Processed images, served at `/media/` |
+| `PORT` | `3002` | Railway sets this automatically |
+| `DATA_DIR` | Railway volume path, else `.` | Folder for the database, photos and generated secret |
+| `DB_PATH` | `<DATA_DIR>/stylegram.db` | SQLite file |
+| `UPLOAD_DIR` | `<DATA_DIR>/uploads` | Processed images, served at `/media/` |
+| `ADMIN_USERNAME`, `ADMIN_PASSWORD` | none | Production admin account, created at startup |
+| `SEED_DEMO`, `DEMO_PASSWORD` | off | Demo content on an empty database at first start |
 | `JWT_SECRET` | generated and kept in `.jwt-secret` (development) | **Required** when `NODE_ENV=production` |
-| `ADMIN_USERNAMES` | `admin` | Comma-separated; these usernames become admins when they register |
+| `ADMIN_USERNAMES` | `admin` | **Development only**: these usernames become admins when they register |
 | `UTM_SOURCE` | `stylegram` | |
 
 ## Stack
