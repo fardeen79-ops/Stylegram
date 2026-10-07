@@ -4,3 +4,4 @@ dist/
 *.db-*
 uploads/
 .env
+.jwt-secret

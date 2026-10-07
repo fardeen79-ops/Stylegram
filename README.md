@@ -36,6 +36,31 @@ The web app follows the familiar Instagram layout, with its own name, logo and i
   "Create new post" flow with drag-and-drop and tap-to-tag.
 - **Everything else:** bottom-sheet menus, light and dark mode, and @mentions and #hashtags as links.
 
+## Install it on your phone (app version)
+
+Stylegram is an installable web app (a PWA). Once added to your home screen, it gets its own icon, opens
+full-screen without browser bars, has a splash screen, and shows the feed and photos you've already seen
+even when you're offline.
+
+- **Android (Chrome):** open the app and tap **Install** in the banner, or use ⋮ → **Install app**.
+- **iPhone (Safari):** tap **Add** in the banner and follow the steps, or tap Share → **Add to Home Screen**.
+- **Desktop (Chrome / Edge):** click **Install app** in the sidebar, or the install icon in the address bar.
+
+Phones only allow full installing from a **secure (https) address**. `http://localhost` counts as secure,
+but your computer's Wi-Fi address (`http://192.168.x.x:3002`) doesn't. The easiest ways to get https on
+your phone:
+- Run it in **GitHub Codespaces**. In the **Ports** tab, set port 3002 to **Public** and open that https
+  link on your phone.
+- Or put it online, for example on Render, Railway or Fly.io.
+
+On the Wi-Fi address you can still browse the mobile version; you just won't get the install button.
+
+The service worker (`public/sw.js`):
+- Always loads fresh data when online.
+- Remembers recent API responses and photos for offline use.
+- Never stores login, admin or brand-dashboard requests.
+- Its saved data is deleted whenever someone logs in or out, so another person on the same phone can't see it.
+
 ## How it works
 
 **For people**
@@ -110,7 +135,7 @@ height.
 | `PORT` | `3002` | |
 | `DB_PATH` | `stylegram.db` | SQLite file |
 | `UPLOAD_DIR` | `uploads` | Processed images, served at `/media/` |
-| `JWT_SECRET` | random per start | **Required** when `NODE_ENV=production` |
+| `JWT_SECRET` | generated and kept in `.jwt-secret` (development) | **Required** when `NODE_ENV=production` |
 | `ADMIN_USERNAMES` | `admin` | Comma-separated; these usernames become admins when they register |
 | `UTM_SOURCE` | `stylegram` | |
 

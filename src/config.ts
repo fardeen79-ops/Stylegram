@@ -1,11 +1,22 @@
 import { randomBytes } from "node:crypto";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+
+const DEV_SECRET_FILE = ".jwt-secret";
 
 function jwtSecret(): string {
   const s = process.env.JWT_SECRET;
   if (s) return s;
   if (process.env.NODE_ENV === "production") throw new Error("JWT_SECRET must be set in production");
-  // Dev fallback: tokens are invalidated on restart.
-  return randomBytes(32).toString("hex");
+  if (process.env.NODE_ENV === "test" || process.env.VITEST) return randomBytes(32).toString("hex");
+  // Development: keep a generated secret in a local, git-ignored file so restarts don't log everyone out.
+  try {
+    if (existsSync(DEV_SECRET_FILE)) return readFileSync(DEV_SECRET_FILE, "utf8").trim();
+    const secret = randomBytes(32).toString("hex");
+    writeFileSync(DEV_SECRET_FILE, secret, { mode: 0o600 });
+    return secret;
+  } catch {
+    return randomBytes(32).toString("hex");
+  }
 }
 
 export const config = {

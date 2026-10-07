@@ -27,5 +27,8 @@ export const icons = {
   chart: (on) => svg(`<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>`, { sw: on ? 2.6 : 2 }),
   shield: () => svg(`<path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/>`),
   link: () => svg(`<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>`),
+  wifiOff: () => svg(`<path d="M2 8.8a15 15 0 0 1 4.2-2.6M9.5 5.2A15 15 0 0 1 22 8.8M5 12.5a10 10 0 0 1 3.5-2M12.9 10A10 10 0 0 1 19 12.5M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/><path d="M3 3l18 18"/>`, { size: 28 }),
+  download: () => svg(`<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>`),
+  iosShare: () => svg(`<path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/>`, { size: 18 }).replace('class="ic"', 'class="ic inline-ic"'),
   verified: () => `<svg class="vf" width="14" height="14" viewBox="0 0 24 24" aria-label="Verified"><path fill="#3897f0" d="M12 1.5 14.6 3.3l3.1-.2 1 3 2.6 1.8-.9 3 .9 3-2.6 1.8-1 3-3.1-.2L12 22.5l-2.6-1.8-3.1.2-1-3-2.6-1.8.9-3-.9-3 2.6-1.8 1-3 3.1.2z"/><path d="m8 12.3 2.7 2.7L16.3 9.5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
 };

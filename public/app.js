@@ -39,7 +39,19 @@ async function api(path, { method = "GET", body, form } = {}) {
   const headers = {};
   if (state.token) headers.Authorization = `Bearer ${state.token}`;
   if (body) headers["Content-Type"] = "application/json";
-  const res = await fetch(`/api${path}`, { method, headers, body: form ?? (body ? JSON.stringify(body) : undefined) });
+  let res;
+  try {
+    res = await fetch(`/api${path}`, { method, headers, body: form ?? (body ? JSON.stringify(body) : undefined) });
+  } catch {
+    const err = new Error(navigator.onLine === false ? "You're offline. Check your connection and try again." : "Couldn't reach Stylegram. Check your connection and try again.");
+    err.offline = true;
+    throw err;
+  }
+  if (res.headers.get("X-Offline-Cache") && !api.offlineNoticeShown) {
+    api.offlineNoticeShown = true;
+    toast("You're offline. Showing what you saw last time.");
+  }
+  if (!res.headers.get("X-Offline-Cache")) api.offlineNoticeShown = false;
   const data = res.status === 204 ? null : await res.json().catch(() => null);
   if (!res.ok) {
     if (res.status === 401 && state.token && path !== "/auth/login") logout(false);
@@ -97,6 +109,79 @@ function sheet(html, { onClick } = {}) {
 }
 function closeSheets() { $$(".sheet-backdrop").forEach((s) => s.remove()); }
 
+// ---- Install as an app (PWA) ------------------------------------------------
+
+const install = {
+  prompt: null, // Chrome/Edge/Android: the deferred beforeinstallprompt event
+  standalone: matchMedia("(display-mode: standalone)").matches || navigator.standalone === true,
+  ios: /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1),
+  get canPrompt() { return Boolean(this.prompt); },
+  get iosHint() { return this.ios && !this.standalone && /safari/i.test(navigator.userAgent) && !/crios|fxios|edgios/i.test(navigator.userAgent); },
+};
+
+if ("serviceWorker" in navigator && window.isSecureContext) {
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
+}
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  install.prompt = e;
+  renderInstallBanner();
+  renderChrome(currentPath());
+});
+window.addEventListener("appinstalled", () => {
+  install.prompt = null;
+  renderInstallBanner();
+  renderChrome(currentPath());
+  toast("Stylegram was added to your home screen.");
+});
+
+async function promptInstall() {
+  if (install.prompt) {
+    install.prompt.prompt();
+    await install.prompt.userChoice.catch(() => {});
+    install.prompt = null;
+    renderInstallBanner();
+    renderChrome(currentPath());
+  } else if (install.iosHint) {
+    iosInstallSheet();
+  } else {
+    sheet(`<div class="product-sheet"><h3>Install Stylegram</h3>
+      <p class="muted">Open your browser's menu and choose <b>Install app</b> or <b>Add to Home screen</b>.
+      Installing needs a secure (https) address. On your own computer, http://localhost works too.</p>
+      <div class="btns"><button class="btn" data-close>OK</button></div></div>`);
+  }
+}
+
+function iosInstallSheet() {
+  sheet(`<div class="product-sheet" style="text-align:center">
+    <img src="/icons/apple-touch-icon.png" alt="" width="64" height="64" style="border-radius:14px;margin:0 auto 12px" />
+    <h3>Add Stylegram to your Home Screen</h3>
+    <ol class="ios-steps">
+      <li>Tap the <b>Share</b> button ${icons.iosShare()} in Safari's toolbar.</li>
+      <li>Scroll down and tap <b>Add to Home Screen</b>.</li>
+      <li>Tap <b>Add</b>. Stylegram opens full-screen, like an app.</li>
+    </ol>
+    <div class="btns"><button class="btn" data-close>Got it</button></div></div>`);
+}
+
+function renderInstallBanner() {
+  const el = $("#install-banner");
+  const dismissed = store("installDismissed") === "1";
+  const show = !install.standalone && !dismissed && (install.canPrompt || install.iosHint);
+  el.hidden = !show;
+  if (!show) return;
+  el.innerHTML = `<button class="icon-btn x" data-dismiss aria-label="Dismiss">${icons.close()}</button>
+    <img src="/icons/icon-192.png" alt="" width="40" height="40" />
+    <div class="t"><div class="b">Stylegram</div><div class="muted small">Get the full-screen app on your phone</div></div>
+    <button class="btn primary" data-install>${install.canPrompt ? "Install" : "Add"}</button>`;
+}
+$("#install-banner").addEventListener("click", (e) => {
+  if (e.target.closest("[data-dismiss]")) { store("installDismissed", "1"); renderInstallBanner(); }
+  else if (e.target.closest("[data-install]")) promptInstall();
+});
+
+const currentPath = () => (location.hash.slice(1) || "/").split("?")[0];
+
 // ---- Chrome: sidebar, mobile top bar, tab bar ------------------------------
 
 function renderChrome(path) {
@@ -119,8 +204,10 @@ function renderChrome(path) {
       ${brandLinks}
       ${me ? item(`/u/${me.username}`, profileIcon, "Profile", is(`/u/${me.username}`)) : item("/login", icons.user(), "Log in", is("/login"))}
     </nav>
+    ${!install.standalone && install.canPrompt ? `<button class="item" id="install-app">${icons.download()}<span class="label">Install app</span></button>` : ""}
     ${me ? `<button class="item" id="more-menu">${icons.menu()}<span class="label">More</span></button>` : ""}`;
   $("#more-menu")?.addEventListener("click", moreMenu);
+  $("#install-app")?.addEventListener("click", promptInstall);
 
   $("#mobile-top").innerHTML = `
     <a href="#/" class="wordmark" style="font-size:30px">Stylegram</a>
@@ -131,6 +218,10 @@ function renderChrome(path) {
         : `<a class="btn primary" href="#/login">Log in</a><a class="text-btn" style="margin-left:8px" href="#/signup">Sign up</a>`}
     </div>`;
 
+  $("#tabbar").onclick = (e) => {
+    const a = e.target.closest('a[href="#/"]');
+    if (a && currentPath() === "/") { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); route(); }
+  };
   $("#tabbar").innerHTML = me
     ? [
         `<a href="#/" class="${is("/") ? "active" : ""}" aria-label="Home">${icons.home(is("/"))}</a>`,
@@ -147,9 +238,13 @@ function moreMenu() {
       <a href="#/settings" data-close>Settings</a>
       <a href="#/saved" data-close>Saved</a>
       ${state.me.ownedBrand?.verified ? `<a href="#/brand" data-close>Brand dashboard</a>` : ""}
+      ${!install.standalone && (install.canPrompt || install.iosHint) ? `<button data-install>Add Stylegram to Home Screen</button>` : ""}
       <button data-logout class="danger">Log out</button>
       <button data-close>Cancel</button></div>`,
-    { onClick: (e, close) => { if (e.target.closest("[data-logout]")) { close(); logout(); } } });
+    { onClick: (e, close) => {
+      if (e.target.closest("[data-logout]")) { close(); logout(); }
+      if (e.target.closest("[data-install]")) { close(); promptInstall(); }
+    } });
 }
 
 // ---- Router ----------------------------------------------------------------
@@ -186,7 +281,12 @@ async function route() {
     try {
       await fn(...m.slice(1).map(decodeURIComponent), new URLSearchParams(query));
     } catch (e) {
-      if (seq === routeSeq) view.innerHTML = `<div class="grid-empty"><div class="big">Sorry, this page isn't available.</div><p>${esc(e.message)}</p><a class="text-btn" href="#/">Go back to Stylegram</a></div>`;
+      if (seq === routeSeq && e.offline) {
+        const off = navigator.onLine === false;
+        view.innerHTML = `<div class="grid-empty"><div class="circle-icon">${icons.wifiOff()}</div><div class="big">${off ? "You're offline" : "Can't connect right now"}</div>
+          <p>${off ? "This page hasn't been saved for offline use yet. Reconnect to see it." : "Stylegram couldn't be reached. Pages you've already seen still open."}</p><button class="btn primary" id="retry">Try again</button></div>`;
+        $("#retry").addEventListener("click", route);
+      } else if (seq === routeSeq) view.innerHTML = `<div class="grid-empty"><div class="big">Sorry, this page isn't available.</div><p>${esc(e.message)}</p><a class="text-btn" href="#/">Go back to Stylegram</a></div>`;
     }
     if (seq === routeSeq) window.scrollTo(0, 0);
     return;
@@ -197,7 +297,13 @@ window.addEventListener("hashchange", route);
 
 // ---- Auth ------------------------------------------------------------------
 
+/** Saved offline data belongs to whoever was logged in: wipe it when that changes. */
+function clearOfflineData() {
+  if ("caches" in window) caches.delete("api-v1").catch(() => {});
+}
+
 function logout(redirect = true) {
+  clearOfflineData();
   state.token = null;
   state.me = null;
   store("token", null);
@@ -252,6 +358,7 @@ function authPage(mode) {
           username: f.username, email: f.email, password: f.password, displayName: f.displayName, accountType,
           brand: accountType === "BRAND" ? { name: f.brandName, website: f.website } : undefined } })
       : await api("/auth/login", { method: "POST", body: { login: f.login, password: f.password } });
+    clearOfflineData();
     state.token = res.token;
     store("token", res.token);
     state.me = res.user;
@@ -1119,5 +1226,9 @@ async function adminPage() {
 
 // ---- Boot ------------------------------------------------------------------
 
+window.addEventListener("offline", () => toast("You're offline. Some things won't load until you reconnect.", true));
+window.addEventListener("online", () => toast("Back online."));
+
 await loadMe();
+renderInstallBanner();
 route();
