@@ -1,0 +1,112 @@
+# Stylegram
+
+A photo-sharing app where people post their outfits and **tag each piece of clothing and each accessory to
+the actual brand and product**. Brands get a verified account, review the tags on their products, link them
+to their catalog, and see how much shopping traffic the posts send them.
+
+## Quick start
+
+```bash
+npm install
+npm run seed     # optional: demo users, brands and tagged posts
+npm run dev      # http://localhost:3002
+npm test
+```
+
+The seed creates `maya.styles`, `leo_fits`, `sara.wears`, the brand account `northwind` and `admin`. Every
+password is `password123`. The demo brands (Northwind Denim, Atelier Mare, Kite Footwear) are made up.
+
+## How it works
+
+**For people**
+- Post up to 10 photos per post (a carousel), with a caption.
+- Tap a photo to drop a tag on an item. Choose the brand (autocomplete), then either pick the exact product
+  from that brand's catalog or describe the item and paste a link. Each tag also gets a category such as top,
+  shoes, bag or eyewear.
+- A post shows dots on each tagged item and a list of "items in this photo" with a **Shop** button.
+- Feed (people you follow), Explore (filter by category, search brands, items and captions), profiles,
+  follows, likes, comments and saved posts.
+
+**For brands**
+- **Every brand gets a page, even before it signs up.** When someone tags a brand nobody has tagged before,
+  a *community brand* page is created. It lists every post that tags the brand ("Seen on").
+- **Brand accounts:** a business signs up as a brand. If the brand is new, an admin verifies it. If a
+  community page already exists for it, the business files a **claim**, and approving the claim hands the
+  page and all its existing tags to that business. Brands can't manage anything until they're verified, so
+  nobody can take over "Nike" by signing up first.
+- **Catalog:** verified brands add products (name, link, price, category). People can then tag the exact
+  product.
+- **Tag review:** brands **confirm** tags, which adds a "Brand confirmed" badge and can correct the tag to the
+  right catalog product, or **reject** them ("not ours"). Rejected tags disappear for everyone except the
+  post's author, and their Shop link stops working. When a verified brand tags its own posts, the tags are
+  confirmed automatically.
+- **Analytics:** totals for tags, posts and creators, shop clicks over the last 7 and 30 days, and the top
+  products by tags and clicks.
+
+**Shop links** go through `/t/:tagId`. The app counts the click, then redirects to the catalog product's
+link, or the link the tagger added, or the brand's website, in that order. It adds `utm_source=stylegram`
+and `utm_campaign=post_<id>` so the brand can see the traffic in its own analytics.
+
+## Safety and privacy built in
+
+- **Uploads are decoded and re-encoded** with `sharp`. This removes EXIF metadata, including **GPS
+  location**, from every photo. Anything that isn't a real image is rejected. Files are capped at 10 MB and
+  50 megapixels.
+- Outbound links must be `http(s)` URLs, so a `javascript:` or `data:` link is rejected. The redirect only
+  ever goes to a stored, validated URL, so it can't be used to send people to arbitrary sites.
+- Passwords are hashed with scrypt, and the web client escapes everything that users write.
+
+## API overview
+
+All JSON endpoints are under `/api`. Send `Authorization: Bearer <token>` where a route needs a login.
+
+| Area | Endpoints |
+| --- | --- |
+| Auth | `POST /auth/register` (`accountType: PERSONAL\|BRAND`, `brand: {name, website}`), `POST /auth/login` |
+| Me | `GET/PATCH /me`, `PUT /me/avatar` (multipart `avatar`), `GET /me/saved` |
+| Users | `GET /users?q=`, `GET /users/:u`, `GET /users/:u/posts`, `PUT/DELETE /users/:u/follow` |
+| Posts | `POST /posts` (multipart: `images[]`, `caption`, `tags` as a JSON array), `GET/PATCH/DELETE /posts/:id`, `GET /feed`, `GET /explore?category=&q=` |
+| Tags | `POST /posts/:id/tags`, `DELETE /tags/:id`, `GET /t/:id` (outbound redirect) |
+| Engagement | `PUT/DELETE /posts/:id/like`, `PUT/DELETE /posts/:id/save`, `GET/POST /posts/:id/comments`, `DELETE /comments/:id` |
+| Brands | `GET /brands?q=`, `GET /brands/:slug`, `GET /brands/:slug/products`, `GET /brands/:slug/posts?product=` |
+| Brand admin | `GET /brand/dashboard`, `PATCH /brand`, `PUT /brand/logo`, `GET/POST /brand/products`, `PATCH/DELETE /brand/products/:id`, `GET /brand/tags?status=`, `POST /brand/tags/:id/review` |
+| Site admin | `GET /admin/queue`, `POST /admin/brands/:slug/verify`, `POST /admin/claims/:id` |
+
+A tag in `POST /posts` looks like this:
+
+```json
+{ "image": 0, "x": 0.42, "y": 0.35, "label": "Denim jacket", "category": "outerwear",
+  "brandSlug": "northwind-denim", "productId": 12 }
+```
+
+To tag a brand by name instead, use `"brandName": "Some Brand"`. The brand is found, or created as a
+community brand. You can also add an optional `"url"`. `x` and `y` are fractions of the photo's width and
+height.
+
+## Configuration
+
+| Variable | Default | |
+| --- | --- | --- |
+| `PORT` | `3002` | |
+| `DB_PATH` | `stylegram.db` | SQLite file |
+| `UPLOAD_DIR` | `uploads` | Processed images, served at `/media/` |
+| `JWT_SECRET` | random per start | **Required** when `NODE_ENV=production` |
+| `ADMIN_USERNAMES` | `admin` | Comma-separated; these usernames become admins when they register |
+| `UTM_SOURCE` | `stylegram` | |
+
+## Stack
+
+Node.js + TypeScript, Express 5, SQLite (better-sqlite3), sharp for images, zod for validation, and a
+dependency-free vanilla JS front end. Tests use Vitest + supertest with real image fixtures.
+
+## Before going to production
+
+- Move image storage to object storage with a CDN, and processing to a background queue.
+- Add email verification, rate limits, content moderation (reporting, plus automated nudity and violence
+  checks), blocking, and private accounts.
+- Verify brands properly, for example by sending a code to an email at the brand's domain or checking a DNS
+  TXT record, instead of relying on manual admin review alone.
+- Affiliate programmes (such as Rakuten, Awin or brands' own) and catalog import from product feeds (Google
+  Merchant or Shopify) would let creators earn from their tags, and would save brands from adding products
+  by hand.
+- Native mobile apps, and an AI model that suggests what each item is.
