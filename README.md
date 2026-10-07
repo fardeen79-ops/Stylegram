@@ -172,7 +172,7 @@ height.
 | `UPLOAD_DIR` | `<DATA_DIR>/uploads` | Processed images, served at `/media/` |
 | `ADMIN_USERNAME`, `ADMIN_PASSWORD` | none | Production admin account, created at startup |
 | `SEED_DEMO`, `DEMO_PASSWORD` | off | Demo content on an empty database at first start |
-| `JWT_SECRET` | generated and kept in `.jwt-secret` (development) | **Required** when `NODE_ENV=production` |
+| `JWT_SECRET` | generated once and kept in `<DATA_DIR>/.jwt-secret` | Set it yourself if you prefer; tokens stay valid across restarts either way |
 | `ADMIN_USERNAMES` | `admin` | **Development only**: these usernames become admins when they register |
 | `UTM_SOURCE` | `stylegram` | |
 
