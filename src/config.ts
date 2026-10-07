@@ -10,6 +10,9 @@ const production = process.env.NODE_ENV === "production";
  */
 const dataDir = process.env.DATA_DIR ?? process.env.RAILWAY_VOLUME_MOUNT_PATH ?? ".";
 
+/** False when running in production with nowhere durable to keep data (no volume / DATA_DIR / DB_PATH). */
+const persistentStorage = !production || dataDir !== "." || Boolean(process.env.DB_PATH);
+
 /** Read a generated secret from `file`, creating it on first use (mode 600). */
 function persistedSecret(file: string): string {
   if (existsSync(file)) return readFileSync(file, "utf8").trim();
@@ -25,7 +28,9 @@ function jwtSecret(): string {
   if (process.env.NODE_ENV === "test" || process.env.VITEST) return randomBytes(32).toString("hex");
   if (production) {
     // No JWT_SECRET set: keep a generated one on the persistent data volume, never in the image.
-    if (dataDir === ".") throw new Error("Set JWT_SECRET, or DATA_DIR / a Railway volume, in production");
+    // Without a volume (e.g. the first Railway deploy, before one is attached) start anyway with a
+    // temporary secret; server.ts logs a loud warning that data won't survive a redeploy.
+    if (!persistentStorage) return randomBytes(32).toString("hex");
     return persistedSecret(join(dataDir, ".jwt-secret"));
   }
   // Development: a git-ignored local file, so restarts don't log everyone out.
@@ -38,6 +43,7 @@ function jwtSecret(): string {
 
 export const config = {
   production,
+  persistentStorage,
   port: Number(process.env.PORT ?? 3002),
   dataDir,
   dbPath: process.env.DB_PATH ?? join(dataDir, "stylegram.db"),

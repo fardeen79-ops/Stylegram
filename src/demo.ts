@@ -47,13 +47,32 @@ async function placeholder(label: string): Promise<Buffer> {
   return sharp(Buffer.from(svg)).jpeg({ quality: 85 }).toBuffer();
 }
 
+/**
+ * Unsplash's download link redirects to the original file (often 20-50+ megapixels). Ask its
+ * image CDN for a 1600px version instead, which keeps memory low on small servers.
+ */
+async function downloadUrl(id: string): Promise<string> {
+  const page = `https://unsplash.com/photos/${id}/download?force=true`;
+  try {
+    const res = await fetch(page, { redirect: "manual", signal: AbortSignal.timeout(15_000) });
+    const location = res.headers.get("location");
+    if (!location) return page;
+    const url = new URL(location, page);
+    if (url.hostname === "images.unsplash.com") {
+      url.searchParams.set("w", "1600");
+      url.searchParams.set("q", "85");
+      url.searchParams.set("fm", "jpg");
+    }
+    return url.toString();
+  } catch {
+    return page;
+  }
+}
+
 async function photo(key: PhotoKey): Promise<Buffer> {
   const p = PHOTOS[key];
   try {
-    const res = await fetch(`https://unsplash.com/photos/${p.id}/download?force=true`, {
-      redirect: "follow",
-      signal: AbortSignal.timeout(30_000),
-    });
+    const res = await fetch(await downloadUrl(p.id), { signal: AbortSignal.timeout(30_000) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     // Originals can be very large: shrink before the normal upload pipeline.
     return await sharp(Buffer.from(await res.arrayBuffer()), { limitInputPixels: false })

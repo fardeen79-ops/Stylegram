@@ -182,7 +182,7 @@ export function createApp(ctx: Ctx) {
   const api = express.Router();
 
   api.get("/health", (_req, res) => {
-    res.json({ status: "ok" });
+    res.json({ status: "ok", storage: ctx.config.persistentStorage ? "persistent" : "temporary" });
   });
   api.get("/categories", (_req, res) => {
     res.json(CATEGORIES);

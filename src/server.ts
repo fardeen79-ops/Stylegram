@@ -1,10 +1,29 @@
 import { randomBytes } from "node:crypto";
+import sharp from "sharp";
 import { createApp } from "./app.js";
 import { ensureAdmin } from "./bootstrap.js";
 import { config } from "./config.js";
 import type { Ctx } from "./context.js";
 import { openDb } from "./db.js";
 import { seedDemo } from "./demo.js";
+
+// Log anything unexpected with a clear message instead of dying silently.
+process.on("unhandledRejection", (err) => console.error("Unhandled error (the server keeps running):", err));
+process.on("uncaughtException", (err) => {
+  console.error("Fatal error, restarting:", err);
+  process.exit(1);
+});
+
+// Small instances: keep image processing lean.
+sharp.cache(false);
+sharp.concurrency(1);
+
+if (!config.persistentStorage) {
+  console.warn(
+    "WARNING: No volume attached. Posts, photos and accounts are stored temporarily and will be LOST on the next deploy. " +
+      "On Railway: right-click the service → Attach volume → mount path /data.",
+  );
+}
 
 const db = openDb(config.dbPath);
 const ctx: Ctx = { db, config, now: () => new Date() };
