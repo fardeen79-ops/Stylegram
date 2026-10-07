@@ -1,15 +1,15 @@
-// Generates the app icons in public/icons from one SVG design. Run: node scripts/make-icons.mjs
+// Generates the app icons (price tag on the Stylegram indigo→teal gradient) in public/icons from one SVG design. Run: node scripts/make-icons.mjs
 import sharp from "sharp";
 
 const gradient = `<linearGradient id="g" x1="0" y1="1" x2="1" y2="0">
-  <stop offset="0" stop-color="#ffb35c"/><stop offset="0.35" stop-color="#ff7a59"/>
-  <stop offset="0.7" stop-color="#e94b7a"/><stop offset="1" stop-color="#c13584"/></linearGradient>`;
+  <stop offset="0" stop-color="#4f46e5"/><stop offset="1" stop-color="#14b8a6"/></linearGradient>`;
 
-/** White shopping-bag mark, centred, at `scale` of the canvas. */
+/** White price-tag mark (Stylegram's tagging), centred, at `scale` of the canvas. */
 const bag = (scale) => {
   const s = 512 * scale, o = (512 - s) / 2, k = s / 24;
-  return `<g transform="translate(${o} ${o}) scale(${k})" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M5.5 8h13l-1 12.2a1 1 0 0 1-1 .8h-9a1 1 0 0 1-1-.8z"/><path d="M9 10V7a3 3 0 0 1 6 0v3"/></g>`;
+  return `<g transform="translate(${o} ${o}) scale(${k}) rotate(-8 12 12)">
+    <path d="M3.5 12.1V5a1.5 1.5 0 0 1 1.5-1.5h7.1a1.5 1.5 0 0 1 1.06.44l7.4 7.4a1.5 1.5 0 0 1 0 2.12l-7.1 7.1a1.5 1.5 0 0 1-2.12 0l-7.4-7.4a1.5 1.5 0 0 1-.44-1.06z" fill="#fff"/>
+    <circle cx="8" cy="8" r="1.7" fill="#4f46e5"/></g>`;
 };
 
 const icon = ({ rounded, scale }) => `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">

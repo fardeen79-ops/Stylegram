@@ -24,17 +24,20 @@ Unsplash IDs and photographers, is in `src/seed.ts`.
 
 ## Look and feel
 
-The web app follows the familiar Instagram layout, with its own name, logo and icons:
-- **Navigation:** a left sidebar on desktop, which shrinks to icons only on tablets, and a bottom tab bar plus
-  top bar on phones.
-- **Feed:** a row of people you follow with gradient rings, and a "Suggested for you" column.
-- **Posts:** swipeable carousels with dots, and double-tap to like with a heart burst. Product tags appear when
-  you tap the photo, and a "Shop the look" strip under each post opens a product sheet.
-- **Profiles and brand pages:** a 3-column grid with like and comment counts on hover. Explore uses a mixed
-  grid with large tiles, plus search and category chips.
-- **Post page and Create:** on desktop, the post page shows the photo next to its comments. Create is a
-  "Create new post" flow with drag-and-drop and tap-to-tag.
-- **Everything else:** bottom-sheet menus, light and dark mode, and @mentions and #hashtags as links.
+The layout is familiar to people who use social apps, with Stylegram's own visual identity:
+- **Icons:** a custom set of soft, rounded, lightly tinted icons. Home is stacked look cards, Explore is a
+  sparkle, Create is a gradient **+** button, Saved is a **hanger** ("Closet"), and product tags use a
+  **price tag**.
+- **Brand colours:** an indigo-to-teal gradient for avatar rings, the verified badge, primary buttons and the
+  app icon.
+- **Navigation:** a left sidebar on desktop (icons only on tablets), and a bottom tab bar plus top bar on
+  phones.
+- **Feed and posts:** a row of people you follow, suggestions, swipeable carousels, and double-tap to like
+  with a rose heart and a ring animation. Product tags appear when you tap the photo, and a "Shop the look"
+  strip opens a product sheet.
+- **Everything else:** profile and brand grids, Explore with search and categories, a two-column post page
+  on desktop, a "Create new post" flow with tap-to-tag, light and dark mode, and @mentions and #hashtags as
+  links.
 
 ## Deploy to Railway
 

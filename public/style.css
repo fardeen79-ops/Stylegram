@@ -9,15 +9,17 @@
   --muted: #737373;
   --border: #dbdbdb;
   --border-2: #efefef;
-  --blue: #0095f6;
-  --blue-hover: #1877f2;
+  /* Stylegram brand: indigo → teal. (--blue is the primary action colour.) */
+  --blue: #4f46e5;
+  --blue-hover: #4338ca;
+  --brand-grad: linear-gradient(135deg, #4f46e5 0%, #14b8a6 100%);
   --link: #00376b;
-  --red: #ff3040;
+  --red: #f43f5e;
   --ok: #16a34a;
   --warn: #b45309;
   --btn-2: #efefef;
   --btn-2-hover: #dbdbdb;
-  --ring: linear-gradient(45deg, #ffb35c 0%, #ff7a59 30%, #e94b7a 60%, #c13584 100%);
+  --ring: var(--brand-grad);
   --sheet-backdrop: rgb(0 0 0 / 0.65);
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --script: "Grand Hotel", "Brush Script MT", "Segoe Script", cursive;
@@ -35,7 +37,9 @@
     --muted: #a8a8a8;
     --border: #363636;
     --border-2: #262626;
-    --link: #e0f1ff;
+    --link: #c7d2fe;
+    --blue: #6d6af7;
+    --blue-hover: #5b57f2;
     --btn-2: #363636;
     --btn-2-hover: #262626;
     --ok: #4ade80;
@@ -444,3 +448,29 @@ main { min-height: 100vh; padding-bottom: 64px; }
   body { overscroll-behavior-y: none; }
   .wordmark, .tabbar, .sidebar { -webkit-user-select: none; user-select: none; }
 }
+
+/* ---- Stylegram identity -------------------------------------------------- */
+.sidebar a.active .ic, .tabbar a.active .ic, .mobile-top a.active .ic { color: var(--blue); }
+.tabbar a.create-tab { padding: 0 10px; }
+.tabbar a.create-tab span, .sidebar .create-dot {
+  display: grid; place-items: center; width: 40px; height: 32px; border-radius: 12px;
+  background: var(--brand-grad); color: #fff; box-shadow: 0 2px 8px rgb(79 70 229 / 0.35);
+}
+.tabbar a.create-tab .ic, .sidebar .create-dot .ic { width: 30px; height: 30px; stroke-width: 2.4; }
+.tabbar a.create-tab .ic circle { fill-opacity: 0; stroke: none; }
+.sidebar .create-dot { width: 26px; height: 26px; border-radius: 8px; box-shadow: none; }
+.sidebar .create-dot .ic { width: 24px; height: 24px; }
+.sidebar .create-dot .ic circle { fill-opacity: 0; stroke: none; }
+.media .bag-btn, .grid .tile .badges { --tag-hole: #1f1f1f; }
+.dots i.on { background: var(--blue); }
+
+/* Double-tap: a rose heart with an expanding ring (instead of a plain white heart). */
+.burst { color: var(--red); }
+.burst::before {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 110px; height: 110px; margin: -55px 0 0 -55px;
+  border-radius: 50%; border: 3px solid #fff; opacity: 0; transform: scale(0.3);
+}
+.burst.go::before { animation: ring 0.7s ease-out; }
+@keyframes ring { 0% { opacity: 0.9; transform: scale(0.3); } 100% { opacity: 0; transform: scale(1.5); } }
+.burst .ic { width: 84px; height: 84px; filter: drop-shadow(0 0 0 #fff) drop-shadow(0 6px 16px rgb(0 0 0 / 0.35)); }
+.burst .ic path { stroke: #fff; stroke-width: 1.2; }

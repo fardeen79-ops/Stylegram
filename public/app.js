@@ -199,8 +199,8 @@ function renderChrome(path) {
       ${me ? item("/", icons.home(is("/")), "Home", is("/")) : ""}
       ${item("/explore?focus=1", icons.search(false), "Search", false)}
       ${item("/explore", icons.explore(is("/explore")), "Explore", is("/explore"))}
-      ${me ? item("/new", icons.create(), "Create", is("/new")) : ""}
-      ${me ? item("/saved", icons.bookmark(is("/saved")), "Saved", is("/saved")) : ""}
+      ${me ? item("/new", `<span class="create-dot">${icons.create()}</span>`, "Create", is("/new")) : ""}
+      ${me ? item("/saved", icons.bookmark(is("/saved")), "Closet", is("/saved")) : ""}
       ${brandLinks}
       ${me ? item(`/u/${me.username}`, profileIcon, "Profile", is(`/u/${me.username}`)) : item("/login", icons.user(), "Log in", is("/login"))}
     </nav>
@@ -226,8 +226,8 @@ function renderChrome(path) {
     ? [
         `<a href="#/" class="${is("/") ? "active" : ""}" aria-label="Home">${icons.home(is("/"))}</a>`,
         `<a href="#/explore" class="${is("/explore") ? "active" : ""}" aria-label="Explore">${icons.search(is("/explore"))}</a>`,
-        `<a href="#/new" aria-label="Create">${icons.create()}</a>`,
-        `<a href="#/saved" class="${is("/saved") ? "active" : ""}" aria-label="Saved">${icons.bookmark(is("/saved"))}</a>`,
+        `<a href="#/new" class="create-tab" aria-label="Create"><span>${icons.create()}</span></a>`,
+        `<a href="#/saved" class="${is("/saved") ? "active" : ""}" aria-label="Closet">${icons.bookmark(is("/saved"))}</a>`,
         `<a href="#/u/${esc(me.username)}" class="${is(`/u/${me.username}`) ? "active" : ""}" aria-label="Profile">${avatar(me, 26)}</a>`,
       ].join("")
     : "";
@@ -236,7 +236,7 @@ function renderChrome(path) {
 function moreMenu() {
   sheet(`<div class="menu-list">
       <a href="#/settings" data-close>Settings</a>
-      <a href="#/saved" data-close>Saved</a>
+      <a href="#/saved" data-close>Closet</a>
       ${state.me.ownedBrand?.verified ? `<a href="#/brand" data-close>Brand dashboard</a>` : ""}
       ${!install.standalone && (install.canPrompt || install.iosHint) ? `<button data-install>Add Stylegram to Home Screen</button>` : ""}
       <button data-logout class="danger">Log out</button>
@@ -438,7 +438,7 @@ function actionRow(p) {
     <a href="#/p/${p.id}" aria-label="Comment">${icons.comment()}</a>
     <button data-share aria-label="Share">${icons.share()}</button>
     <span class="spacer"></span>
-    <button data-save aria-label="${p.savedByMe ? "Remove from saved" : "Save"}">${icons.bookmark(p.savedByMe)}</button>
+    <button data-save aria-label="${p.savedByMe ? "Remove from closet" : "Add to closet"}">${icons.bookmark(p.savedByMe)}</button>
   </div>`;
 }
 
@@ -599,7 +599,7 @@ function mountPost(el, p, { detail = false } = {}) {
       save.innerHTML = icons.bookmark(p.savedByMe);
       save.classList.add("pop");
       await api(`/posts/${p.id}/save`, { method: p.savedByMe ? "PUT" : "DELETE" });
-      toast(p.savedByMe ? "Saved to your collection." : "Removed from saved.");
+      toast(p.savedByMe ? "Added to your closet." : "Removed from your closet.");
     }
   }));
 
@@ -813,10 +813,10 @@ async function postPage(id) {
 }
 
 async function savedPage() {
-  view.innerHTML = `<div class="profile-wrap" style="padding-top:20px"><h2 class="page-title">Saved</h2>
-    <p class="muted" style="padding:0 12px 16px;margin:0">Only you can see what you've saved.</p><div id="grid"></div></div>`;
+  view.innerHTML = `<div class="profile-wrap" style="padding-top:20px"><h2 class="page-title">Your closet</h2>
+    <p class="muted" style="padding:0 12px 16px;margin:0">Looks you've hung up for later. Only you can see your closet.</p><div id="grid"></div></div>`;
   postGrid($("#grid"), "/me/saved", {
-    empty: `<div class="grid-empty"><div class="circle-icon">${icons.bookmark()}</div><div class="big">Save</div>Save looks you love. They'll only be visible to you.</div>`,
+    empty: `<div class="grid-empty"><div class="circle-icon">${icons.bookmark()}</div><div class="big">Your closet is empty</div>Tap the hanger on any look to keep it here. Only you can see your closet.</div>`,
   });
 }
 
@@ -824,7 +824,7 @@ async function profilePage(username, params) {
   const u = await api(`/users/${encodeURIComponent(username)}`);
   const tab = params.get("tab") === "saved" && u.isMe ? "saved" : "posts";
   const buttons = u.isMe
-    ? `<a class="btn" href="#/settings">Edit profile</a><a class="btn" href="#/saved">View saved</a>`
+    ? `<a class="btn" href="#/settings">Edit profile</a><a class="btn" href="#/saved">Closet</a>`
     : state.me
       ? `<button class="btn ${u.isFollowing ? "" : "primary"}" id="follow">${u.isFollowing ? "Following" : "Follow"}</button>
          ${u.brand ? `<a class="btn" href="#/b/${esc(u.brand.slug)}">Shop</a>` : ""}`
@@ -851,7 +851,7 @@ async function profilePage(username, params) {
     </header>
     <nav class="ptabs">
       <a href="#/u/${esc(u.username)}" class="${tab === "posts" ? "on" : ""}">${icons.grid(tab === "posts")}<span class="label">Posts</span></a>
-      ${u.isMe ? `<a href="#/u/${esc(u.username)}?tab=saved" class="${tab === "saved" ? "on" : ""}">${icons.saved(tab === "saved")}<span class="label">Saved</span></a>` : ""}
+      ${u.isMe ? `<a href="#/u/${esc(u.username)}?tab=saved" class="${tab === "saved" ? "on" : ""}">${icons.saved(tab === "saved")}<span class="label">Closet</span></a>` : ""}
       ${u.brand ? `<a href="#/b/${esc(u.brand.slug)}">${icons.shop(false)}<span class="label">Shop</span></a>` : ""}
     </nav>
     <div id="grid"></div></div>`;
