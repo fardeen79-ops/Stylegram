@@ -76,6 +76,11 @@ The layout is familiar to people who use social apps, with Stylegram's own visua
   tab. Photos show an item-count badge, and grid tiles show the brand and price.
 - **Discovery:** Explore opens with "Shop by occasion" (Eid, weekend, desert drive, souk…) and "Trending
   brands" (most-tagged in the last 30 days, with a recent look as the cover).
+- **Paid partnership label:** creators switch on "Paid partnership with [brand]" when they post, or later from
+  the post's ••• menu. UAE rules require paid content to be clearly labelled.
+  - The label shows straight away, so the disclosure never waits on the brand.
+  - Brands confirm or decline it under **Brand dashboard → Partnerships**. A confirmed label shows the brand's
+    verified badge. A declined one stays on the post as "Paid partnership" without the brand's name.
 - **Brand pages:** a gradient cover, a Follow button for the brand's account, a "Worn by" row of creators who
   tag the brand, and Seen on / Shop tabs.
 - **Everything else:** profile and brand grids, Explore with search and categories, a two-column post page
@@ -252,11 +257,11 @@ All JSON endpoints are under `/api`. Send `Authorization: Bearer <token>` where 
 | Auth | `POST /auth/register` (`accountType: PERSONAL\|BRAND`, `brand: {name, website}`), `POST /auth/login` |
 | Me | `GET/PATCH /me` (`language: en\|ar`), `PUT /me/avatar` (multipart `avatar`), `GET /me/saved` |
 | Users | `GET /users?q=`, `GET /users/:u`, `GET /users/:u/posts`, `PUT/DELETE /users/:u/follow` |
-| Posts | `POST /posts` (multipart: `images[]`, `caption`, `tags` as a JSON array), `GET/PATCH/DELETE /posts/:id`, `GET /feed`, `GET /explore?category=&q=` |
+| Posts | `POST /posts` (multipart: `images[]`, `caption`, `tags` as a JSON array, optional `partner` as JSON `{brandSlug}` or `{brandName}`), `GET/PATCH/DELETE /posts/:id` (PATCH takes `caption` and/or `partner`, `null` removes it), `GET /feed`, `GET /explore?category=&q=` |
 | Tags | `POST /posts/:id/tags`, `DELETE /tags/:id`, `GET /t/:id` (outbound redirect) |
 | Engagement | `PUT/DELETE /posts/:id/like`, `PUT/DELETE /posts/:id/save`, `GET/POST /posts/:id/comments`, `DELETE /comments/:id` |
 | Brands | `GET /brands?q=`, `GET /brands/:slug`, `GET /brands/:slug/products`, `GET /brands/:slug/posts?product=` |
-| Brand admin | `GET /brand/dashboard`, `PATCH /brand`, `PUT /brand/logo`, `GET/POST /brand/products`, `PATCH/DELETE /brand/products/:id`, `GET /brand/tags?status=`, `POST /brand/tags/:id/review` |
+| Brand admin | `GET /brand/partnerships`, `POST /brand/partnerships/:postId/review` (`CONFIRM\|DECLINE`), `GET /brand/dashboard`, `PATCH /brand`, `PUT /brand/logo`, `GET/POST /brand/products`, `PATCH/DELETE /brand/products/:id`, `GET /brand/tags?status=`, `POST /brand/tags/:id/review` |
 | Translation | `GET /translate/status`, `POST /translate` (`{kind: post\|comment\|bio, id}`; translates into the user's language) |
 | Site admin | `GET /admin/queue`, `POST /admin/brands/:slug/verify`, `POST /admin/claims/:id` |
 

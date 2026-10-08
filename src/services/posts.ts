@@ -5,7 +5,7 @@ import { mediaUrl, type StoredImage } from "../media.js";
 import { normalizeHttpUrl, withUtm } from "../util.js";
 import { detectLang, fromStored, toStored } from "../lang.js";
 import { earnsCommission, newClickId } from "./commissions.js";
-import { brandSummary, findOrCreateBrand, getBrand, getProduct, publicProduct, type BrandRow } from "./brands.js";
+import { brandSummary, findOrCreateBrand, getBrand, getProduct, managedBrand, publicProduct, type BrandRow } from "./brands.js";
 import { getUser, getUserByUsername, userSummary } from "./users.js";
 
 export interface TagInput {
@@ -25,7 +25,15 @@ interface PostRow {
   user_id: number;
   caption: string;
   caption_lang: string | null;
+  partner_brand_id: number | null;
+  partner_status: "PENDING" | "CONFIRMED" | "DECLINED" | null;
   created_at: string;
+}
+
+/** The brand a creator was paid by: an existing brand, or a name to find/create. */
+export interface PartnerInput {
+  brandSlug?: string;
+  brandName?: string;
 }
 
 interface ImageRow {
@@ -53,14 +61,14 @@ interface TagRow {
   created_at: string;
 }
 
-function resolveTagBrand(ctx: Ctx, userId: number, t: TagInput): BrandRow {
+function resolveTagBrand(ctx: Ctx, userId: number, t: { brandSlug?: string; brandName?: string }): BrandRow {
   if (t.brandSlug) {
     const b = ctx.db.prepare("SELECT * FROM brands WHERE slug = ?").get(t.brandSlug) as BrandRow | undefined;
     if (!b) throw new AppError("VALIDATION_ERROR", `Unknown brand: ${t.brandSlug}`);
     return b;
   }
   if (t.brandName) return findOrCreateBrand(ctx, t.brandName, userId);
-  throw new AppError("VALIDATION_ERROR", "Each tag needs a brand");
+  throw new AppError("VALIDATION_ERROR", "A brand is required");
 }
 
 function insertTag(ctx: Ctx, userId: number, postId: number, imageId: number, t: TagInput): number {
@@ -80,7 +88,14 @@ function insertTag(ctx: Ctx, userId: number, postId: number, imageId: number, t:
   return Number(info.lastInsertRowid);
 }
 
-export function createPost(ctx: Ctx, userId: number, images: StoredImage[], caption: string, tags: TagInput[]): number {
+export function createPost(
+  ctx: Ctx,
+  userId: number,
+  images: StoredImage[],
+  caption: string,
+  tags: TagInput[],
+  partner?: PartnerInput | null,
+): number {
   if (images.length === 0) throw new AppError("VALIDATION_ERROR", "A post needs at least one photo");
   for (const t of tags) {
     if (!Number.isInteger(t.image) || t.image < 0 || t.image >= images.length) {
@@ -105,8 +120,64 @@ export function createPost(ctx: Ctx, userId: number, images: StoredImage[], capt
       ),
     );
     for (const t of tags) insertTag(ctx, userId, postId, imageIds[t.image]!, t);
+    if (partner) setPartnershipRow(ctx, userId, postId, partner);
     return postId;
   })();
+}
+
+// ---- Paid partnerships ----
+
+function setPartnershipRow(ctx: Ctx, userId: number, postId: number, partner: PartnerInput): void {
+  const brand = resolveTagBrand(ctx, userId, partner);
+  if (brand.owner_id === userId) {
+    throw new AppError("VALIDATION_ERROR", "Posts from your own brand account don't need a paid partnership label");
+  }
+  ctx.db.prepare("UPDATE posts SET partner_brand_id = ?, partner_status = 'PENDING' WHERE id = ?").run(brand.id, postId);
+}
+
+/** Add, change or remove (null) the paid partnership label on your own post. */
+export function setPartnership(ctx: Ctx, userId: number, postId: number, partner: PartnerInput | null): void {
+  const p = ownPost(ctx, userId, postId);
+  if (!partner) {
+    ctx.db.prepare("UPDATE posts SET partner_brand_id = NULL, partner_status = NULL WHERE id = ?").run(p.id);
+    return;
+  }
+  setPartnershipRow(ctx, userId, p.id, partner);
+}
+
+function publicPartnership(ctx: Ctx, p: PostRow) {
+  if (!p.partner_brand_id || !p.partner_status) return null;
+  return {
+    status: p.partner_status,
+    // A brand that declined isn't named, but the post stays labelled as paid.
+    brand: p.partner_status === "DECLINED" ? null : brandSummary(getBrand(ctx, p.partner_brand_id)),
+  };
+}
+
+/** Posts that name the caller's brand as a paid partner, for the brand to confirm or decline. */
+export function brandPartnerships(ctx: Ctx, userId: number) {
+  const brand = managedBrand(ctx, userId);
+  const rows = ctx.db
+    .prepare(
+      `SELECT p.id, p.partner_status, p.created_at, u.username,
+              (SELECT thumb_path FROM post_images WHERE post_id = p.id ORDER BY position LIMIT 1) AS thumb_path
+       FROM posts p JOIN users u ON u.id = p.user_id WHERE p.partner_brand_id = ? ORDER BY p.id DESC LIMIT 200`,
+    )
+    .all(brand.id) as { id: number; partner_status: string; created_at: string; username: string; thumb_path: string }[];
+  return rows.map((r) => ({
+    postId: r.id,
+    author: r.username,
+    status: r.partner_status,
+    thumbUrl: mediaUrl(r.thumb_path),
+    createdAt: r.created_at,
+  }));
+}
+
+export function reviewPartnership(ctx: Ctx, userId: number, postId: number, action: "CONFIRM" | "DECLINE"): void {
+  const brand = managedBrand(ctx, userId);
+  const p = getPostRow(ctx, postId);
+  if (p.partner_brand_id !== brand.id) throw new AppError("NOT_FOUND", "That post doesn't name your brand as a partner");
+  ctx.db.prepare("UPDATE posts SET partner_status = ? WHERE id = ?").run(action === "CONFIRM" ? "CONFIRMED" : "DECLINED", p.id);
 }
 
 function getPostRow(ctx: Ctx, id: number): PostRow {
@@ -161,6 +232,7 @@ export function postView(ctx: Ctx, postId: number, viewerId?: number) {
     author: userSummary(ctx, getUser(ctx, p.user_id)),
     caption: p.caption,
     captionLang: fromStored(p.caption_lang),
+    partnership: publicPartnership(ctx, p),
     images: images.map((img) => ({
       id: img.id,
       url: mediaUrl(img.path),

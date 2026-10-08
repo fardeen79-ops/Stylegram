@@ -556,11 +556,20 @@ function captionHtml(p) {
     ${transBtn("post", p.id, p.captionLang, p.caption)}`;
 }
 
+/** "Paid partnership with <brand>": the creator's ad disclosure, shown under their name. */
+function partnerLine(p) {
+  const pp = p.partnership;
+  if (!pp) return "";
+  return `<div class="partner-line">${pp.brand
+    ? t("Paid partnership with {brand}", { brand: `<a href="#/b/${esc(pp.brand.slug)}">${esc(pp.brand.name)}</a>${pp.status === "CONFIRMED" ? vf(pp.brand.verified) : ""}` })
+    : t("Paid partnership")}</div>`;
+}
+
 function postHeader(p) {
   return `<div class="post-head">
     <a href="#/u/${esc(p.author.username)}">${avatar(p.author, 32, { ring: true })}</a>
     <div class="who"><a class="b" href="#/u/${esc(p.author.username)}">${esc(p.author.username)}</a>${vf(p.author.brand?.verified)}
-      <span class="muted"> • <a href="#/p/${p.id}">${ago(p.createdAt)}</a></span></div>
+      <span class="muted"> • <a href="#/p/${p.id}">${ago(p.createdAt)}</a></span>${partnerLine(p)}</div>
     <button class="icon-btn" data-menu aria-label="${t("More options")}">${icons.more()}</button>
   </div>`;
 }
@@ -645,7 +654,8 @@ function productSheet(tg, post) {
 function postMenu(p, el) {
   const url = `${location.origin}/#/p/${p.id}`;
   sheet(`<div class="menu-list">
-      ${p.isMine ? `<button class="danger" data-act="delete">${t("Delete")}</button>` : ""}
+      ${p.isMine ? `<button class="danger" data-act="delete">${t("Delete")}</button>
+        <button data-act="partner">${p.partnership ? t("Edit paid partnership label") : t("Add paid partnership label")}</button>` : ""}
       ${!p.isMine && state.me ? `<button class="danger strong" data-act="unfollow">${t("Unfollow")}</button>` : ""}
       <a href="#/p/${p.id}" data-close>${t("Go to post")}</a>
       <button data-act="copy">${t("Copy link")}</button>
@@ -656,6 +666,7 @@ function postMenu(p, el) {
       if (!act) return;
       close();
       if (act === "copy") { await navigator.clipboard?.writeText(url).catch(() => {}); toast(t("Link copied to clipboard.")); }
+      if (act === "partner") partnerSheet(p, el);
       if (act === "unfollow") { await api(`/users/${encodeURIComponent(p.author.username)}/follow`, { method: "DELETE" }); toast(t("Unfollowed {user}", { user: p.author.username })); }
       if (act === "delete") {
         if (!confirm(t("Delete post? This can't be undone."))) return;
@@ -665,6 +676,52 @@ function postMenu(p, el) {
         else el.remove();
       }
     }) });
+}
+
+const PARTNER_HELP = "Turn this on when a brand paid you, gave you products or services for free, or you're promoting your own business. UAE rules require paid content to be clearly labelled.";
+
+/** Brand field with autocomplete, for the paid partnership label. Returns a getter for the chosen brand. */
+function partnerField(container, initial = null) {
+  container.innerHTML = `<div class="suggest"><input class="input" name="partner" autocomplete="off" maxlength="60" placeholder="${t("Brand that paid you")}" value="${esc(initial?.name ?? "")}" /></div>`;
+  const input = $("input", container);
+  let picked = initial ? { slug: initial.slug, name: initial.name } : { name: "" };
+  brandAutocomplete(input, (b) => (picked = b));
+  return {
+    input,
+    value: () => {
+      const name = input.value.trim();
+      if (!name) return null;
+      return picked.slug && picked.name === name ? { brandSlug: picked.slug } : { brandName: name };
+    },
+  };
+}
+
+function partnerSheet(p, el) {
+  const close = sheet(`<form class="product-sheet" id="partner-form">
+      <h3>${t("Paid partnership label")}</h3>
+      <p class="muted small">${t(PARTNER_HELP)}</p>
+      <div id="partner-field"></div>
+      <div class="btns">
+        <button class="btn primary">${t("Save")}</button>
+        ${p.partnership ? `<button type="button" class="btn danger-text" data-remove>${t("Remove label")}</button>` : ""}
+        <button type="button" class="btn" data-close>${t("Cancel")}</button>
+      </div></form>`);
+  const field = partnerField($("#partner-field"), p.partnership?.brand ?? null);
+  field.input.focus();
+  const save = safe(async (partner) => {
+    const updated = await api(`/posts/${p.id}`, { method: "PATCH", body: { partner } });
+    p.partnership = updated.partnership;
+    $(".post-head", el).outerHTML = postHeader(p);
+    close();
+    toast(partner ? t("Paid partnership label added.") : t("Paid partnership label removed."));
+  });
+  $("#partner-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const partner = field.value();
+    if (!partner) return toast(t("Enter the brand's name."), true);
+    save(partner);
+  });
+  $("#partner-form [data-remove]")?.addEventListener("click", () => save(null));
 }
 
 /** Wire up likes, double-tap, carousel, tags, comments for one rendered post. */
@@ -1193,11 +1250,23 @@ async function createPage() {
         <div class="row">${avatar(state.me, 28)}<span class="b">${esc(state.me.username)}</span></div>
         <textarea id="caption" maxlength="2200" placeholder="${t("Write a caption… Use #hashtags and @mentions")}" dir="auto"></textarea>
         <div class="count"><span id="cc">0</span>/${n(2200)}</div>
+        <div class="partner-box">
+          <label class="switch-row"><span><span class="b">${t("Paid partnership label")}</span>
+            <span class="muted small">${t(PARTNER_HELP)}</span></span>
+            <input type="checkbox" id="partner-on" role="switch" /></label>
+          <div id="partner-field" hidden></div>
+        </div>
         <div id="ai-panel"></div>
         <div class="b" style="margin-top:6px">${t("Tagged products")}</div>
         <ul class="tag-list" id="tag-list"></ul>
       </div>
     </div></div></div>`;
+
+  const partner = partnerField($("#partner-field"));
+  $("#partner-on").addEventListener("change", (e) => {
+    $("#partner-field").hidden = !e.target.checked;
+    if (e.target.checked) partner.input.focus();
+  });
 
   const canvas = $("#canvas");
   const draw = () => {
@@ -1369,6 +1438,11 @@ async function createPage() {
       photos.forEach((p) => form.append("images", p.file));
       form.append("caption", $("#caption").value);
       form.append("tags", JSON.stringify(tags.map(({ brandLabel, productName, ...tag }) => tag)));
+      if ($("#partner-on").checked) {
+        const value = partner.value();
+        if (!value) throw new Error(t("Enter the brand that paid you, or turn off the paid partnership label."));
+        form.append("partner", JSON.stringify(value));
+      }
       const post = await api("/posts", { method: "POST", form });
       toast(t("Your post has been shared."));
       location.hash = `#/p/${post.id}`;
@@ -1392,7 +1466,7 @@ async function dashboardPage(params) {
       ${[["Tagged items", d.tags.total], ["To review", d.tags.pending], ["Looks", d.posts], ["Creators", d.creators], ["Shop clicks · 7d", d.clicks.last7Days], ["Shop clicks · 30d", d.clicks.last30Days]]
         .map(([l, v]) => `<div class="stat"><div class="muted small">${t(l)}</div><div class="v">${n(v)}</div></div>`).join("")}
     </div>
-    <div class="seg-tabs">${[["review", t("Review tags ({n})", { n: n(d.tags.pending) })], ["all", t("All tags")], ["products", t("Products")], ["commissions", t("Commissions")], ["profile", t("Brand profile")]]
+    <div class="seg-tabs">${[["review", t("Review tags ({n})", { n: n(d.tags.pending) })], ["all", t("All tags")], ["products", t("Products")], ["partnerships", t("Partnerships")], ["commissions", t("Commissions")], ["profile", t("Brand profile")]]
       .map(([k, l]) => `<a class="chip ${k === tab ? "on" : ""}" style="text-transform:none" href="#/brand?tab=${k}">${l}</a>`).join("")}</div>
     <div class="card" id="panel"></div></div>`;
   const panel = $("#panel");
@@ -1442,6 +1516,24 @@ async function dashboardPage(params) {
       const id = e.target.dataset.archive;
       if (!id || !confirm(t("Archive this product? Existing tags keep their link."))) return;
       await api(`/brand/products/${id}`, { method: "DELETE" });
+      route();
+    }));
+  } else if (tab === "partnerships") {
+    const list = await api("/brand/partnerships");
+    panel.innerHTML = `<p class="muted small" style="margin-top:0">${t("Posts where creators say you paid them. The label shows as soon as they add it. Confirm the ones you paid for; if you decline, the post stays labelled as paid but your brand's name is removed.")}</p>
+      ${list.length ? `<table class="table"><tbody>${list.map((r) => `<tr data-post="${r.postId}">
+        <td style="width:60px"><a href="#/p/${r.postId}"><img src="${esc(r.thumbUrl)}" alt="" /></a></td>
+        <td><b>@${esc(r.author)}</b><div class="muted small">${fmtDate(r.createdAt)}</div>
+          <span class="${r.status === "CONFIRMED" ? "ok-badge" : r.status === "DECLINED" ? "bad-badge" : "warn-badge"}">${t(r.status.toLowerCase())}</span></td>
+        <td><div class="row" style="justify-content:flex-end">
+          ${r.status !== "CONFIRMED" ? `<button class="btn primary" data-pact="CONFIRM">${t("Confirm")}</button>` : ""}
+          ${r.status !== "DECLINED" ? `<button class="btn" data-pact="DECLINE">${t("Not our partner")}</button>` : ""}</div></td>
+      </tr>`).join("")}</tbody></table>` : `<p class="grid-empty">${t("No paid partnerships yet.")}</p>`}`;
+    panel.addEventListener("click", safe(async (e) => {
+      const action = e.target.dataset.pact;
+      if (!action) return;
+      await api(`/brand/partnerships/${e.target.closest("tr").dataset.post}/review`, { method: "POST", body: { action } });
+      toast(action === "CONFIRM" ? t("Partnership confirmed.") : t("Partnership declined."));
       route();
     }));
   } else if (tab === "commissions") {

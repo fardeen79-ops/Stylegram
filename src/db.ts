@@ -242,6 +242,13 @@ const MIGRATIONS: string[] = [
     photo_key TEXT NOT NULL
   );
   `,
+  // 5: "Paid partnership with <brand>" disclosure on posts. The creator declares it (shown at once);
+  // the brand can confirm it or decline it (then the label stays, without the brand's name).
+  `
+  ALTER TABLE posts ADD COLUMN partner_brand_id INTEGER REFERENCES brands(id);
+  ALTER TABLE posts ADD COLUMN partner_status TEXT CHECK (partner_status IN ('PENDING', 'CONFIRMED', 'DECLINED'));
+  CREATE INDEX posts_partner ON posts(partner_brand_id) WHERE partner_brand_id IS NOT NULL;
+  `,
 ];
 
 export function migrate(db: DB): void {

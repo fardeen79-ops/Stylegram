@@ -550,3 +550,17 @@ code.key { word-break: break-all; display: block; margin: 6px 0; }
 .lang-switch .text-btn.on { color: var(--text); font-weight: 600; }
 .menu-list [data-lang] .ic { display: inline-block; vertical-align: -5px; margin-inline-end: 6px; }
 .brand-page .info .handle { color: var(--link); font-weight: 600; }
+
+/* Paid partnership label */
+.partner-line { font-size: 12px; line-height: 15px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.partner-line a { font-weight: 600; }
+.partner-line .vf { width: 11px; height: 11px; vertical-align: -1px; }
+.partner-box { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+.switch-row { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; }
+.switch-row > span { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.switch-row input { appearance: none; flex: none; width: 40px; height: 24px; border-radius: 99px; background: var(--border); position: relative; cursor: pointer; transition: background 0.15s; margin-top: 2px; }
+.switch-row input::after { content: ""; position: absolute; top: 2px; inset-inline-start: 2px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / 0.25); transition: inset-inline-start 0.15s; }
+.switch-row input:checked { background: var(--blue); }
+.switch-row input:checked::after { inset-inline-start: 18px; }
+#partner-field { margin-top: 10px; }
+.btn.danger-text { color: var(--red); }

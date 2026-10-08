@@ -47,6 +47,9 @@ import {
   setSave,
   trackClick,
   updateCaption,
+  setPartnership,
+  brandPartnerships,
+  reviewPartnership,
   userPosts,
 } from "./services/posts.js";
 import {
@@ -99,6 +102,10 @@ const tagBody = z
   })
   .refine((t) => t.brandSlug || t.brandName, { message: "Each tag needs brandSlug or brandName" });
 
+const partnerBody = z
+  .object({ brandSlug: z.string().max(60).optional(), brandName: z.string().trim().min(1).max(60).optional() })
+  .refine((p) => p.brandSlug || p.brandName, { message: "Name the brand: brandSlug or brandName" });
+
 const schemas = {
   register: z.object({
     username: z
@@ -128,7 +135,11 @@ const schemas = {
   translate: z.object({ kind: z.enum(["post", "comment", "bio"]), id: z.union([z.string(), z.number()]).transform(String) }),
   caption: z.string().max(2200).default(""),
   tags: z.array(tagBody.and(z.object({ image: z.number().int().min(0) }))).max(100).default([]),
-  captionBody: z.object({ caption: z.string().max(2200) }),
+  partner: partnerBody,
+  postUpdate: z
+    .object({ caption: z.string().max(2200).optional(), partner: partnerBody.nullable().optional() })
+    .refine((b) => b.caption !== undefined || b.partner !== undefined, { message: "Nothing to update" }),
+  partnershipReview: z.object({ action: z.enum(["CONFIRM", "DECLINE"]) }),
   addTag: tagBody.and(z.object({ imageId: z.number().int().positive() })),
   comment: z.object({ body: z.string().trim().min(1).max(1000) }),
   page: z.object({
@@ -314,12 +325,14 @@ export function createApp(ctx: Ctx) {
     if (files.length === 0) throw new AppError("VALIDATION_ERROR", "Attach at least one photo as 'images'");
     const caption = parse(schemas.caption, req.body.caption ?? "");
     const tags = parse(schemas.tags, jsonField(req.body.tags, "tags") ?? []);
+    const partnerJson = jsonField(req.body.partner, "partner");
+    const partner = partnerJson == null ? null : parse(schemas.partner, partnerJson);
     // Every photo is checked before anything is stored; one blocked photo rejects the post.
     for (const f of files) await assertImageAllowed(ctx, uid(req), f.buffer);
     const stored: StoredImage[] = [];
     try {
       for (const f of files) stored.push(await storeImage(ctx.config, f.buffer));
-      const postId = createPost(ctx, uid(req), stored, caption, tags);
+      const postId = createPost(ctx, uid(req), stored, caption, tags, partner);
       res.status(201).json(postView(ctx, postId, uid(req)));
     } catch (err) {
       await deleteImages(ctx.config, stored.flatMap((s) => [s.path, s.thumbPath]));
@@ -340,7 +353,11 @@ export function createApp(ctx: Ctx) {
   });
 
   api.patch("/posts/:id", auth, (req, res) => {
-    updateCaption(ctx, uid(req), intParam(req), parse(schemas.captionBody, req.body).caption);
+    const body = parse(schemas.postUpdate, req.body);
+    ctx.db.transaction(() => {
+      if (body.caption !== undefined) updateCaption(ctx, uid(req), intParam(req), body.caption);
+      if (body.partner !== undefined) setPartnership(ctx, uid(req), intParam(req), body.partner);
+    })();
     res.json(postView(ctx, intParam(req), uid(req)));
   });
 
@@ -453,6 +470,15 @@ export function createApp(ctx: Ctx) {
   api.get("/brand/tags", auth, (req, res) => {
     const status = parse(z.enum(["PENDING", "CONFIRMED", "REJECTED"]).optional(), req.query.status);
     res.json(brandTags(ctx, uid(req), status));
+  });
+
+  api.get("/brand/partnerships", auth, (req, res) => {
+    res.json(brandPartnerships(ctx, uid(req)));
+  });
+
+  api.post("/brand/partnerships/:id/review", auth, (req, res) => {
+    reviewPartnership(ctx, uid(req), intParam(req), parse(schemas.partnershipReview, req.body).action);
+    res.status(204).end();
   });
 
   api.post("/brand/tags/:id/review", auth, (req, res) => {

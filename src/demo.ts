@@ -248,6 +248,11 @@ export async function seedDemo(ctx: Ctx, opts: { password: string; log?: Pick<Co
   ]);
   await post(noor.id, "Desert drive essentials 🌵 #uae", ["outdoorFlatlay"], []);
 
+  // Noor's Eid look is a paid partnership with Saffron & Sand, confirmed by the brand.
+  ctx.db
+    .prepare("UPDATE posts SET partner_brand_id = (SELECT id FROM brands WHERE slug = ?), partner_status = 'CONFIRMED' WHERE id = ?")
+    .run(saffron.slug, p7);
+
   // Brand review: Creek Denim and Saffron & Sand confirm Noor's tags.
   ctx.db
     .prepare("UPDATE tags SET status = 'CONFIRMED', reviewed_at = ? WHERE post_id IN (?, ?) AND brand_id IN (SELECT id FROM brands WHERE slug IN (?, ?))")

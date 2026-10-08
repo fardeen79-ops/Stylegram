@@ -268,6 +268,29 @@ const AR = {
   Modest: "أزياء محتشمة",
   "Denim days": "أيام الجينز",
 
+  // Paid partnerships
+  "Paid partnership with {brand}": "شراكة مدفوعة مع {brand}",
+  "Paid partnership": "شراكة مدفوعة",
+  "Paid partnership label": "علامة الشراكة المدفوعة",
+  "Add paid partnership label": "إضافة علامة الشراكة المدفوعة",
+  "Edit paid partnership label": "تعديل علامة الشراكة المدفوعة",
+  "Turn this on when a brand paid you, gave you products or services for free, or you're promoting your own business. UAE rules require paid content to be clearly labelled.":
+    "فعّلها عندما تدفع لك علامة تجارية أو تمنحك منتجات أو خدمات مجانًا، أو عندما تروّج لنشاطك التجاري. تشترط أنظمة الإمارات الإفصاح بوضوح عن المحتوى المدفوع.",
+  "Brand that paid you": "العلامة التجارية التي دفعت لك",
+  "Remove label": "إزالة العلامة",
+  "Paid partnership label added.": "تمت إضافة علامة الشراكة المدفوعة.",
+  "Paid partnership label removed.": "تمت إزالة علامة الشراكة المدفوعة.",
+  "Enter the brand's name.": "أدخل اسم العلامة التجارية.",
+  "Enter the brand that paid you, or turn off the paid partnership label.": "أدخل العلامة التجارية التي دفعت لك، أو أوقف علامة الشراكة المدفوعة.",
+  Partnerships: "الشراكات",
+  "Posts where creators say you paid them. The label shows as soon as they add it. Confirm the ones you paid for; if you decline, the post stays labelled as paid but your brand's name is removed.":
+    "منشورات يذكر أصحابها أنك دفعت لهم. تظهر العلامة فور إضافتها. أكّد الشراكات التي دفعت مقابلها؛ وإذا رفضت تبقى العلامة على المنشور لكن يُزال اسم علامتك التجارية.",
+  "Not our partner": "ليست شراكة معنا",
+  "No paid partnerships yet.": "لا توجد شراكات مدفوعة بعد.",
+  "Partnership confirmed.": "تم تأكيد الشراكة.",
+  "Partnership declined.": "تم رفض الشراكة.",
+  declined: "مرفوضة",
+
   // Brand page
   "Visit store": "زيارة المتجر",
   "Created from people's tags. Is this your brand? <a class=\"text-btn\" href=\"#/signup\">Claim it</a>":
