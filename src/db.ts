@@ -173,7 +173,7 @@ const MIGRATIONS: string[] = [
   ALTER TABLE tag_clicks ADD COLUMN click_id TEXT;
   CREATE UNIQUE INDEX IF NOT EXISTS idx_clicks_click_id ON tag_clicks(click_id);
 
-  -- A purchase a brand reports for a Stylegram click (server-to-server conversion API).
+  -- A purchase a brand reports for a Copp IT click (server-to-server conversion API).
   CREATE TABLE conversions (
     id               INTEGER PRIMARY KEY,
     brand_id         INTEGER NOT NULL REFERENCES brands(id),

@@ -71,7 +71,7 @@ export async function analyzeImage(ctx: Ctx, original: Buffer): Promise<StoredAn
 const clamp01 = (v: number) => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.5);
 
 export const REJECTION_MESSAGE =
-  "This photo can't be posted because it appears to contain nudity or sexual content. Stylegram doesn't allow that.";
+  "This photo can't be posted because it appears to contain nudity or sexual content. Copp IT doesn't allow that.";
 
 /** Reject the upload if it isn't allowed, recording the attempt (never the image) for admins. */
 export async function assertImageAllowed(ctx: Ctx, userId: number, original: Buffer): Promise<StoredAnalysis | null> {

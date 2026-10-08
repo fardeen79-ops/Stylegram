@@ -1,4 +1,4 @@
-// Stylegram web client: a hash-routed single-page app over the JSON API.
+// Copp IT web client: a hash-routed single-page app over the JSON API.
 import { icons } from "./icons.js";
 import { t, tn, tl, setLang, getLang, locale, LANGUAGES, ERROR_MESSAGES, SHORT_UNITS, catLabel, languageName } from "./i18n.js";
 
@@ -44,7 +44,7 @@ async function api(path, { method = "GET", body, form } = {}) {
   try {
     res = await fetch(`/api${path}`, { method, headers, body: form ?? (body ? JSON.stringify(body) : undefined) });
   } catch {
-    const err = new Error(navigator.onLine === false ? t("You're offline. Check your connection and try again.") : t("Couldn't reach Stylegram. Check your connection and try again."));
+    const err = new Error(navigator.onLine === false ? t("You're offline. Check your connection and try again.") : t("Couldn't reach Copp IT. Check your connection and try again."));
     err.offline = true;
     throw err;
   }
@@ -150,7 +150,7 @@ window.addEventListener("appinstalled", () => {
   install.prompt = null;
   renderInstallBanner();
   renderChrome(currentPath());
-  toast(t("Stylegram was added to your home screen."));
+  toast(t("Copp IT was added to your home screen."));
 });
 
 async function promptInstall() {
@@ -163,7 +163,7 @@ async function promptInstall() {
   } else if (install.iosHint) {
     iosInstallSheet();
   } else {
-    sheet(`<div class="product-sheet"><h3>${t("Install Stylegram")}</h3>
+    sheet(`<div class="product-sheet"><h3>${t("Install Copp IT")}</h3>
       <p class="muted">${t("Open your browser's menu and choose <b>Install app</b> or <b>Add to Home screen</b>. Installing needs a secure (https) address. On your own computer, http://localhost works too.")}</p>
       <div class="btns"><button class="btn" data-close>${t("OK")}</button></div></div>`);
   }
@@ -172,11 +172,11 @@ async function promptInstall() {
 function iosInstallSheet() {
   sheet(`<div class="product-sheet" style="text-align:center">
     <img src="/icons/apple-touch-icon.png" alt="" width="64" height="64" style="border-radius:14px;margin:0 auto 12px" />
-    <h3>${t("Add Stylegram to your Home Screen")}</h3>
+    <h3>${t("Add Copp IT to your Home Screen")}</h3>
     <ol class="ios-steps">
       <li>${t("Tap the <b>Share</b> button {icon} in Safari's toolbar.", { icon: icons.iosShare() })}</li>
       <li>${t("Scroll down and tap <b>Add to Home Screen</b>.")}</li>
-      <li>${t("Tap <b>Add</b>. Stylegram opens full-screen, like an app.")}</li>
+      <li>${t("Tap <b>Add</b>. Copp IT opens full-screen, like an app.")}</li>
     </ol>
     <div class="btns"><button class="btn" data-close>${t("Got it")}</button></div></div>`);
 }
@@ -189,7 +189,7 @@ function renderInstallBanner() {
   if (!show) return;
   el.innerHTML = `<button class="icon-btn x" data-dismiss aria-label="${t("Dismiss")}">${icons.close()}</button>
     <img src="/icons/icon-192.png" alt="" width="40" height="40" />
-    <div class="t"><div class="b">Stylegram</div><div class="muted small">${t("Get the full-screen app on your phone")}</div></div>
+    <div class="t"><div class="b">Copp IT</div><div class="muted small">${t("Get the full-screen app on your phone")}</div></div>
     <button class="btn primary" data-install>${install.canPrompt ? t("Install") : t("Add")}</button>`;
 }
 $("#install-banner").addEventListener("click", (e) => {
@@ -211,7 +211,7 @@ function renderChrome(path) {
     + (me?.isAdmin ? item("/admin", icons.shield(), t("Admin"), is("/admin")) : "");
 
   $("#sidebar").innerHTML = `
-    <a class="brand" href="#/"><span class="wordmark">Stylegram</span><span class="mini">${icons.bag()}</span></a>
+    <a class="brand" href="#/"><span class="wordmark">Copp<b>IT</b></span><span class="mini">${icons.bag()}</span></a>
     <nav>
       ${me ? item("/", icons.home(is("/")), t("Home"), is("/")) : ""}
       ${item("/explore?focus=1", icons.search(false), t("Search"), false)}
@@ -227,7 +227,7 @@ function renderChrome(path) {
   $("#install-app")?.addEventListener("click", promptInstall);
 
   $("#mobile-top").innerHTML = `
-    <a href="#/" class="wordmark" style="font-size:30px">Stylegram</a>
+    <a href="#/" class="wordmark" aria-label="Copp IT">Copp<b>IT</b></a>
     <div class="actions">
       ${path === "/login" || path === "/signup" ? "" : me ? `${me.ownedBrand?.verified ? `<a class="icon-btn" href="#/brand" aria-label="${t("Brand dashboard")}">${icons.chart()}</a>` : ""}
         ${me.isAdmin ? `<a class="icon-btn" href="#/admin" aria-label="${t("Admin")}">${icons.shield()}</a>` : ""}
@@ -258,7 +258,7 @@ function moreMenu() {
       <a href="#/earnings" data-close>${t("Earnings")}</a>
       ${state.me.ownedBrand?.verified ? `<a href="#/brand" data-close>${t("Brand dashboard")}</a>` : ""}
       <button data-lang="${other}" lang="${other}">${icons.globe()} ${LANGUAGES[other].name}</button>
-      ${!install.standalone && (install.canPrompt || install.iosHint) ? `<button data-install>${t("Add Stylegram to Home Screen")}</button>` : ""}
+      ${!install.standalone && (install.canPrompt || install.iosHint) ? `<button data-install>${t("Add Copp IT to Home Screen")}</button>` : ""}
       <button data-logout class="danger">${t("Log out")}</button>
       <button data-close>${t("Cancel")}</button></div>`,
     { onClick: (e, close) => {
@@ -306,14 +306,14 @@ async function route() {
       if (seq === routeSeq && e.offline) {
         const off = navigator.onLine === false;
         view.innerHTML = `<div class="grid-empty"><div class="circle-icon">${icons.wifiOff()}</div><div class="big">${off ? t("You're offline") : t("Can't connect right now")}</div>
-          <p>${off ? t("This page hasn't been saved for offline use yet. Reconnect to see it.") : t("Stylegram couldn't be reached. Pages you've already seen still open.")}</p><button class="btn primary" id="retry">${t("Try again")}</button></div>`;
+          <p>${off ? t("This page hasn't been saved for offline use yet. Reconnect to see it.") : t("Copp IT couldn't be reached. Pages you've already seen still open.")}</p><button class="btn primary" id="retry">${t("Try again")}</button></div>`;
         $("#retry").addEventListener("click", route);
-      } else if (seq === routeSeq) view.innerHTML = `<div class="grid-empty"><div class="big">${t("Sorry, this page isn't available.")}</div><p>${esc(e.message)}</p><a class="text-btn" href="#/">${t("Go back to Stylegram")}</a></div>`;
+      } else if (seq === routeSeq) view.innerHTML = `<div class="grid-empty"><div class="big">${t("Sorry, this page isn't available.")}</div><p>${esc(e.message)}</p><a class="text-btn" href="#/">${t("Go back to Copp IT")}</a></div>`;
     }
     if (seq === routeSeq) window.scrollTo(0, 0);
     return;
   }
-  view.innerHTML = `<div class="grid-empty"><div class="big">${t("Sorry, this page isn't available.")}</div><a class="text-btn" href="#/">${t("Go back to Stylegram")}</a></div>`;
+  view.innerHTML = `<div class="grid-empty"><div class="big">${t("Sorry, this page isn't available.")}</div><a class="text-btn" href="#/">${t("Go back to Copp IT")}</a></div>`;
 }
 window.addEventListener("hashchange", route);
 
@@ -372,7 +372,7 @@ function authPage(mode) {
   const signup = mode === "signup";
   view.innerHTML = `<div class="auth">
     <div class="box">
-      <div class="wordmark">Stylegram</div>
+      <div class="wordmark">Copp<b>IT</b></div>
       ${signup ? `<p class="tagline">${t("Sign up to share your looks and shop what people are wearing.")}</p>
         <div class="seg"><button type="button" class="on" data-type="PERSONAL">${t("Personal")}</button><button type="button" data-type="BRAND">${t("Brand")}</button></div>` : ""}
       <form id="auth">
@@ -647,7 +647,7 @@ function productSheet(tg, post) {
       <a class="btn" href="#/b/${esc(tg.brand.slug)}${p ? `?product=${p.id}` : ""}" data-close>${p ? t("More looks with this item") : t("See brand page")}</a>
       <button class="btn" data-close>${t("Close")}</button>
     </div>
-    ${tg.earnsCommission ? `<p class="muted small" style="margin:14px 0 0;text-align:center">${post && !post.author.brand ? t("Stylegram and @{user} may earn a commission if you buy through this link.", { user: esc(post.author.username) }) : t("Stylegram may earn a commission if you buy through this link.")}</p>` : ""}
+    ${tg.earnsCommission ? `<p class="muted small" style="margin:14px 0 0;text-align:center">${post && !post.author.brand ? t("Copp IT and @{user} may earn a commission if you buy through this link.", { user: esc(post.author.username) }) : t("Copp IT may earn a commission if you buy through this link.")}</p>` : ""}
     </div>`);
 }
 
@@ -873,7 +873,7 @@ async function homePage() {
         <button class="text-btn small" id="switch">${t("Switch")}</button></div>
       <div class="row spread" style="margin-top:24px"><span class="muted b">${t("Suggested for you")}</span><a class="b small" href="#/explore">${t("See All")}</a></div>
       <ul class="sugg" id="sugg"></ul>
-      <div class="footer-links">${t("About · Help · Brands · Privacy · Terms")}<br/><br/>© ${new Date().getFullYear()} STYLEGRAM</div>
+      <div class="footer-links">${t("About · Help · Brands · Privacy · Terms")}<br/><br/>© ${new Date().getFullYear()} COPP IT</div>
     </aside>
   </div>`;
   $("#switch").addEventListener("click", () => logout());
@@ -905,7 +905,7 @@ async function homePage() {
     appendPosts(posts, page);
     before = page.at(-1)?.id;
     if (!posts.children.length) {
-      posts.innerHTML = `<div class="grid-empty"><div class="circle-icon">${icons.bag()}</div><div class="big">${t("Welcome to Stylegram")}</div>
+      posts.innerHTML = `<div class="grid-empty"><div class="circle-icon">${icons.bag()}</div><div class="big">${t("Welcome to Copp IT")}</div>
         <p>${t("Follow people and brands to see their looks here, or share your own outfit.")}</p>
         <div class="row" style="justify-content:center"><a class="btn primary" href="#/new">${t("Share a look")}</a><a class="btn" href="#/explore">${t("Explore")}</a></div></div>`;
     }
@@ -1080,7 +1080,7 @@ async function profilePage(username, params) {
         <div class="name">${esc(u.displayName)}</div>
         ${u.accountType === "BRAND" ? `<div class="muted">${t("Brand")}</div>` : ""}
         ${u.bio ? `<div class="bio" data-tx-scope><span data-tx="bio:${esc(u.username)}">${rich(u.bio)}</span>${transBtn("bio", u.username, u.bioLang, u.bio)}</div>` : ""}
-        ${u.brand ? `<a class="ext" href="#/b/${esc(u.brand.slug)}">${icons.bag().replace('width="24" height="24"', 'width="12" height="12" style="display:inline;vertical-align:-1px"')} ${t("Shop on Stylegram")}</a>` : ""}
+        ${u.brand ? `<a class="ext" href="#/b/${esc(u.brand.slug)}">${icons.bag().replace('width="24" height="24"', 'width="12" height="12" style="display:inline;vertical-align:-1px"')} ${t("Shop on Copp IT")}</a>` : ""}
       </div>
     </header>
     <nav class="ptabs">
@@ -1159,7 +1159,7 @@ async function brandPage(slug, params) {
           <span class="pimg" ${p.look ? `style="${closeUp(p.look.imageUrl, p.look.width, p.look.height, p.look.x, p.look.y, 2)}"` : ""}>${p.look ? "" : icons.bag()}</span>
           <span class="n">${esc(p.name)}</span>
           <span class="muted small" style="text-transform:capitalize">${esc(catLabel(p.category))}</span><span class="b">${esc(money(p))}</span></a>`).join("")}</div>`
-      : `<div class="grid-empty"><div class="circle-icon">${icons.bag()}</div><div class="big">${t("No products yet")}</div>${b.claimed ? t("This brand hasn't added its catalog yet.") : t("Products appear once the brand joins Stylegram.")}</div>`;
+      : `<div class="grid-empty"><div class="circle-icon">${icons.bag()}</div><div class="big">${t("No products yet")}</div>${b.claimed ? t("This brand hasn't added its catalog yet.") : t("Products appear once the brand joins Copp IT.")}</div>`;
     return;
   }
   postGrid($("#grid"), `/brands/${slug}/posts${selected ? `?product=${selected.id}` : ""}`, {
@@ -1582,24 +1582,24 @@ async function commissionsPanel(panel) {
       ${pr.enabled ? `<button class="btn" type="button" id="disable">${t("Turn off")}</button>` : ""}
     </form>
     <div class="stat-row">
-      <div class="stat"><div class="muted small">${t("Sales via Stylegram")}</div><div class="v" style="font-size:18px">${esc(sumTotals(data.salesTotals, ["PENDING", "APPROVED"]))}</div></div>
+      <div class="stat"><div class="muted small">${t("Sales via Copp IT")}</div><div class="v" style="font-size:18px">${esc(sumTotals(data.salesTotals, ["PENDING", "APPROVED"]))}</div></div>
       <div class="stat"><div class="muted small">${t("Commission pending")}</div><div class="v" style="font-size:18px">${esc(sumTotals(data.commissionTotals, ["PENDING"]))}</div></div>
       <div class="stat"><div class="muted small">${t("Commission approved")}</div><div class="v" style="font-size:18px">${esc(sumTotals(data.commissionTotals, ["APPROVED"]))}</div></div>
     </div>
     <div class="b" style="margin-top:8px">${t("Connect your store")}</div>
-    <p class="muted small">${t("Stylegram adds <code>sg_click</code> to every Shop link. Keep it (for example in a cookie) until checkout, then have your <b>server</b> report the order. Never put your API key in your website's code.")}</p>
+    <p class="muted small">${t("Copp IT adds <code>sg_click</code> to every Shop link. Keep it (for example in a cookie) until checkout, then have your <b>server</b> report the order. Never put your API key in your website's code.")}</p>
     <div class="row" style="margin:8px 0">
       <span class="muted small">${t("API key: {key}", { key: pr.apiKeyPrefix ? `<code>${esc(pr.apiKeyPrefix)}…</code>` : t("none yet") })}</span>
       <button class="btn" id="rotate">${pr.apiKeyPrefix ? t("Replace key") : t("Create API key")}</button>
     </div>
     <div id="newkey"></div>
     <pre class="code" dir="ltr">curl -X POST ${esc(origin)}/api/v1/conversions \\
-  -H "Authorization: Bearer $STYLEGRAM_API_KEY" \\
+  -H "Authorization: Bearer $COPPIT_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"clickId":"&lt;sg_click from the landing URL&gt;","orderId":"1001","amount":"349.00","currency":"AED"}'
 
 # Refund or cancellation:
-curl -X POST ${esc(origin)}/api/v1/conversions/1001/reverse -H "Authorization: Bearer $STYLEGRAM_API_KEY"</pre>
+curl -X POST ${esc(origin)}/api/v1/conversions/1001/reverse -H "Authorization: Bearer $COPPIT_API_KEY"</pre>
     <div class="b" style="margin-top:16px">${t("Recent sales")}</div>
     ${data.sales.length ? `<table class="table"><tbody>${data.sales.map((c) => `<tr>
       <td><b>${esc(c.item ?? t("Item"))}</b><div class="muted small">${t("order {id}", { id: esc(c.orderId) })} · ${c.creator ? `@${esc(c.creator)}` : "—"} · ${fmtDate(c.createdAt)}</div></td>
@@ -1631,7 +1631,7 @@ curl -X POST ${esc(origin)}/api/v1/conversions/1001/reverse -H "Authorization: B
 async function earningsPage() {
   const e = await api("/me/earnings");
   view.innerHTML = `<div class="page" style="max-width:720px"><h1>${t("Earnings")}</h1>
-    <p class="muted">${t("When someone buys an item you tagged, from a brand with a Stylegram commission program, you earn {share}% of the commission. Earnings stay pending for {days} days (the refund window), then they're approved.", { share: n(e.creatorSharePercent), days: n(e.approvalDays) })}</p>
+    <p class="muted">${t("When someone buys an item you tagged, from a brand with a Copp IT commission program, you earn {share}% of the commission. Earnings stay pending for {days} days (the refund window), then they're approved.", { share: n(e.creatorSharePercent), days: n(e.approvalDays) })}</p>
     <div class="stat-row">
       <div class="stat"><div class="muted small">${t("Pending")}</div><div class="v" style="font-size:20px">${esc(sumTotals(e.totals, ["PENDING"]))}</div></div>
       <div class="stat"><div class="muted small">${t("Approved")}</div><div class="v" style="font-size:20px">${esc(sumTotals(e.totals, ["APPROVED"]))}</div></div>
@@ -1642,7 +1642,7 @@ async function earningsPage() {
       <td>${esc(fmtMoney(c.creatorEarnings, c.currency))}</td><td>${statusBadge(c.status)}</td></tr>`).join("")}</tbody></table>`
       : `<div class="grid-empty" style="padding:30px 0"><div class="circle-icon">${icons.bag()}</div><div class="big" style="font-size:20px">${t("No earnings yet")}</div>
           ${t("Tag the exact products you're wearing. When people shop your looks, sales show up here.")}</div>`}</div>
-    <p class="muted small">${t("Payouts aren't automatic yet. Approved earnings are paid out by the Stylegram team.")}</p></div>`;
+    <p class="muted small">${t("Payouts aren't automatic yet. Approved earnings are paid out by the Copp IT team.")}</p></div>`;
 }
 
 async function adminPage() {

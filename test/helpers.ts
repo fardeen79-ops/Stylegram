@@ -18,7 +18,7 @@ const FIXTURE = await jpeg();
 
 export function setup(opts: { ai?: Ctx["ai"]; config?: Partial<typeof config> } = {}) {
   let now = new Date("2026-03-01T12:00:00Z");
-  const uploadDir = mkdtempSync(join(tmpdir(), "stylegram-test-"));
+  const uploadDir = mkdtempSync(join(tmpdir(), "coppit-test-"));
   const ctx: Ctx = {
     db: openDb(":memory:"),
     config: { ...config, uploadDir, adminUsernames: ["admin"], ...opts.config },

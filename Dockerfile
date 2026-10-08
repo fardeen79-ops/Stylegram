@@ -1,4 +1,4 @@
-# Stylegram production image (used by Railway, works on any Docker host).
+# Copp IT production image (used by Railway, works on any Docker host).
 
 FROM node:22-bookworm-slim AS build
 WORKDIR /app

@@ -1,5 +1,5 @@
-// Stylegram service worker: makes the app installable and lets it open offline.
-const VERSION = "v9";
+// Copp IT service worker: makes the app installable and lets it open offline.
+const VERSION = "v10";
 const SHELL_CACHE = `shell-${VERSION}`;
 const MEDIA_CACHE = `media-${VERSION}`;
 const FONT_CACHE = `fonts-${VERSION}`;

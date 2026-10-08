@@ -3,7 +3,7 @@
  *
  * Flow: a Shop click gets a unique click id (`sg_click`) appended to the brand's URL. The brand's
  * site keeps it until checkout, then its server reports the order to POST /api/v1/conversions with
- * its API key. Stylegram attributes the sale to the tag's post, computes the commission at the
+ * its API key. Copp IT attributes the sale to the tag's post, computes the commission at the
  * brand's rate, and splits it between the creator and the platform. A conversion is pending for
  * the refund window (default 30 days) and then approved, unless the brand reverses it.
  */

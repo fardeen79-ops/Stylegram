@@ -1,5 +1,5 @@
-// Stylegram icon set: soft, rounded duotone glyphs (stroke = currentColor, light tint fill).
-// Drawn for Stylegram; `on` = active/selected state (solid fill).
+// Copp IT icon set: soft, rounded duotone glyphs (stroke = currentColor, light tint fill).
+// Drawn for Copp IT; `on` = active/selected state (solid fill).
 const svg = (body, { size = 24, sw = 1.8 } = {}) =>
   `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 
@@ -48,6 +48,6 @@ export const icons = {
   translate: () => svg(`<path d="M4 5h9M8.5 3v2M6 5c.6 3 2.6 5.6 5.5 7M11 5c-.7 3.4-3 6.3-6.5 8"/><path d="m12.5 21 4-10 4 10M14 17.5h5"/>`, { size: 14 }).replace('class="ic"', 'class="ic inline-ic"'),
   download: () => svg(`<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>`),
   iosShare: () => svg(`<path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/>`, { size: 18 }).replace('class="ic"', 'class="ic inline-ic"'),
-  /** Verified brand: a rounded badge in the Stylegram gradient. */
+  /** Verified brand: a rounded badge in the Copp IT gradient. */
   verified: () => `<svg class="vf" width="14" height="14" viewBox="0 0 24 24" aria-label="Verified"><defs><linearGradient id="vfg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#4f46e5"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs><rect x="2" y="2" width="20" height="20" rx="7" fill="url(#vfg)"/><path d="m7.5 12.3 3 3 6-6.3" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
 };

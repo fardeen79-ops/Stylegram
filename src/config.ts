@@ -41,12 +41,18 @@ function jwtSecret(): string {
   }
 }
 
+/** coppit.db, or the database file from before the rebrand (stylegram.db) if that's the one on disk. */
+function defaultDbPath(): string {
+  const legacy = join(dataDir, "stylegram.db");
+  return existsSync(legacy) ? legacy : join(dataDir, "coppit.db");
+}
+
 export const config = {
   production,
   persistentStorage,
   port: Number(process.env.PORT ?? 3002),
   dataDir,
-  dbPath: process.env.DB_PATH ?? join(dataDir, "stylegram.db"),
+  dbPath: process.env.DB_PATH ?? defaultDbPath(),
   uploadDir: process.env.UPLOAD_DIR ?? join(dataDir, "uploads"),
   jwtSecret: jwtSecret(),
   jwtTtl: process.env.JWT_TTL ?? "7d",
@@ -88,14 +94,14 @@ export const config = {
     /** Days a conversion stays pending (refund window) before it's approved. */
     approvalDays: Number(process.env.COMMISSION_APPROVAL_DAYS ?? 30),
     /**
-     * Optional affiliate-network link for brands without their own Stylegram program, e.g. a
+     * Optional affiliate-network link for brands without their own Copp IT program, e.g. a
      * Skimlinks or Sovrn redirect. `{url}` is replaced with the encoded product URL and `{click}`
-     * with Stylegram's click id (pass it as the network's sub-id to attribute sales to creators).
+     * with Copp IT's click id (pass it as the network's sub-id to attribute sales to creators).
      */
     affiliateLinkTemplate: process.env.AFFILIATE_LINK_TEMPLATE ?? "",
   },
   /** Appended to outbound product links so brands can attribute traffic. */
-  utmSource: process.env.UTM_SOURCE ?? "stylegram",
+  utmSource: process.env.UTM_SOURCE ?? "coppit",
 };
 
 export type Config = typeof config;

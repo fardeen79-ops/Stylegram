@@ -1,4 +1,4 @@
-# Stylegram
+# Copp IT
 
 A photo-sharing app where people post their outfits and **tag each piece of clothing and each accessory to
 the actual brand and product**. Brands get a verified account, review the tags on their products, link them
@@ -60,7 +60,7 @@ Brand names, product names and server validation messages are shown as entered (
 
 ## Look and feel
 
-The layout is familiar to people who use social apps, with Stylegram's own visual identity:
+The layout is familiar to people who use social apps, with Copp IT's own visual identity:
 - **Icons:** a custom set of soft, rounded, lightly tinted icons. Home is stacked look cards, Explore is a
   sparkle, Create is a gradient **+** button, Saved is a **hanger** ("Closet"), and product tags use a
   **price tag**.
@@ -112,7 +112,7 @@ uploads are **not** checked and the server logs a warning.
 
 ## Commissions
 
-Stylegram earns a commission when someone buys through a Shop link, and shares it with the creator who
+Copp IT earns a commission when someone buys through a Shop link, and shares it with the creator who
 tagged the item.
 
 1. **Brands** turn on a program in **Brand dashboard → Commissions**. They set a commission % (up to 50%)
@@ -127,16 +127,16 @@ tagged the item.
    ```
    Refunds go to `POST /api/v1/conversions/<orderId>/reverse`. Reports are idempotent per order id, so
    sending one twice is harmless.
-4. **Stylegram attributes and splits the sale.** The sale is attributed to the tagged post if the click was
+4. **Copp IT attributes and splits the sale.** The sale is attributed to the tagged post if the click was
    within the window. Commission = order amount × the brand's rate. The creator gets `CREATOR_SHARE_PERCENT`
    (default 50%) and the rest is the platform's. Sales on a brand's own posts earn nothing.
 5. **Commissions are approved after the refund window.** Each one stays **pending** for
    `COMMISSION_APPROVAL_DAYS` (default 30), then it's **approved**, unless it was reversed first.
 
 Creators see their sales under **Earnings** (More menu). When a tag can earn a commission, shoppers see a
-disclosure on the product sheet: "Stylegram and @creator may earn a commission if you buy…".
+disclosure on the product sheet: "Copp IT and @creator may earn a commission if you buy…".
 
-**Brands without a Stylegram program:** set `AFFILIATE_LINK_TEMPLATE` to route their Shop links through an
+**Brands without a Copp IT program:** set `AFFILIATE_LINK_TEMPLATE` to route their Shop links through an
 affiliate network such as Skimlinks, Sovrn or Awin. `{url}` is replaced with the product URL and `{click}`
 with the click id, which you pass as the network's sub-id so its reports can be matched to creators. Use the
 exact link format from your network's dashboard, for example
@@ -185,7 +185,7 @@ check `/api/health`. Expect about **$5/month** on the Hobby plan.
 
 ## Install it on your phone (app version)
 
-Stylegram is an installable web app (a PWA). Once added to your home screen, it gets its own icon, opens
+Copp IT is an installable web app (a PWA). Once added to your home screen, it gets its own icon, opens
 full-screen without browser bars, has a splash screen, and shows the feed and photos you've already seen
 even when you're offline.
 
@@ -236,7 +236,7 @@ The service worker (`public/sw.js`):
   products by tags and clicks.
 
 **Shop links** go through `/t/:tagId`. The app counts the click, then redirects to the catalog product's
-link, or the link the tagger added, or the brand's website, in that order. It adds `utm_source=stylegram`
+link, or the link the tagger added, or the brand's website, in that order. It adds `utm_source=coppit`
 and `utm_campaign=post_<id>` so the brand can see the traffic in its own analytics.
 
 ## Safety and privacy built in
@@ -282,13 +282,13 @@ height.
 | --- | --- | --- |
 | `PORT` | `3002` | Railway sets this automatically |
 | `DATA_DIR` | Railway volume path, else `.` | Folder for the database, photos and generated secret |
-| `DB_PATH` | `<DATA_DIR>/stylegram.db` | SQLite file |
+| `DB_PATH` | `<DATA_DIR>/coppit.db` | SQLite file (an existing `stylegram.db` from before the rebrand is kept and used) |
 | `UPLOAD_DIR` | `<DATA_DIR>/uploads` | Processed images, served at `/media/` |
 | `ADMIN_USERNAME`, `ADMIN_PASSWORD` | none | Production admin account, created at startup |
 | `SEED_DEMO`, `DEMO_PASSWORD` | off | Demo content on an empty database at first start |
 | `JWT_SECRET` | generated once and kept in `<DATA_DIR>/.jwt-secret` | Set it yourself if you prefer; tokens stay valid across restarts either way |
 | `ADMIN_USERNAMES` | `admin` | **Development only**: these usernames become admins when they register |
-| `UTM_SOURCE` | `stylegram` | |
+| `UTM_SOURCE` | `coppit` | |
 | `DEFAULT_CURRENCY` | `AED` | Currency for new products and examples |
 | `MARKET_COUNTRY`, `MARKET_LOCALE` | `AE`, `en-AE` | Launch market |
 | `ANTHROPIC_API_KEY` | none | Turns on photo safety checks, item suggestions and translation |

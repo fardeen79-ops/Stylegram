@@ -420,7 +420,7 @@ export function deleteTag(ctx: Ctx, userId: number, tagId: number): void {
 /**
  * Record an outbound click and return where to send the shopper: the product URL with UTM
  * parameters and a unique `sg_click` id the brand reports back with a purchase. Brands without
- * a Stylegram commission program go through the affiliate network link, when one is configured.
+ * a Copp IT commission program go through the affiliate network link, when one is configured.
  */
 export function trackClick(ctx: Ctx, tagId: number): string {
   const t = ctx.db.prepare("SELECT * FROM tags WHERE id = ? AND status != 'REJECTED'").get(tagId) as TagRow | undefined;

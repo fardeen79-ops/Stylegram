@@ -47,7 +47,7 @@ else if (config.production) console.warn("No ADMIN_USERNAME / ADMIN_PASSWORD set
 
 const app = createApp(ctx);
 const server = app.listen(config.port, () => {
-  console.log(`Stylegram listening on port ${config.port} (data in ${config.dataDir})`);
+  console.log(`Copp IT listening on port ${config.port} (data in ${config.dataDir})`);
   // Optional demo content on the first start. Runs after listening so health checks pass meanwhile.
   if (process.env.SEED_DEMO === "true" && freshDatabase) {
     const password = process.env.DEMO_PASSWORD || randomBytes(9).toString("base64url");

@@ -221,7 +221,7 @@ describe("brands", () => {
     const dest = new URL(res.headers.location!);
     expect(dest.origin + dest.pathname).toBe("https://levi.example.com/trucker");
     expect(dest.searchParams.get("color")).toBe("blue");
-    expect(dest.searchParams.get("utm_source")).toBe("stylegram");
+    expect(dest.searchParams.get("utm_source")).toBe("coppit");
     expect(dest.searchParams.get("utm_campaign")).toBe(`post_${p.id}`);
     await t.http.get(tag.shopUrl).expect(302);
     t.advance(10 * 86_400_000);
@@ -242,7 +242,7 @@ describe("brands", () => {
     const amy = await t.user("amy");
     const p = (await t.post(amy, [{ ...jacket, brandSlug: "cos" }]).expect(201)).body;
     const res = await t.http.get(p.images[0].tags[0].shopUrl).expect(302);
-    expect(res.headers.location).toMatch(/^https:\/\/cos\.example\.com\/\?utm_source=stylegram/);
+    expect(res.headers.location).toMatch(/^https:\/\/cos\.example\.com\/\?utm_source=coppit/);
   });
 
   it("shows a brand's 'seen on' posts, filterable by product", async () => {

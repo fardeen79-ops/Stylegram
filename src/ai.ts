@@ -11,7 +11,7 @@ import { CATEGORIES } from "./db.js";
 export const VERDICTS = ["safe", "swimwear_or_underwear", "partial_nudity", "explicit_nudity", "sexual_activity"] as const;
 export type Verdict = (typeof VERDICTS)[number];
 
-/** Verdicts that are never allowed on Stylegram. Swimwear and underwear modelled normally are fine. */
+/** Verdicts that are never allowed on Copp IT. Swimwear and underwear modelled normally are fine. */
 export const BLOCKED_VERDICTS: ReadonlySet<Verdict> = new Set(["partial_nudity", "explicit_nudity", "sexual_activity"]);
 
 export const ImageAnalysisSchema = z.object({
@@ -41,7 +41,7 @@ export interface ImageAI {
 /** The model declined to look at the image; treated as unsafe. */
 export class ImageRefusedError extends Error {}
 
-const SYSTEM_PROMPT = `You review photos uploaded to Stylegram, a fashion app in the United Arab Emirates where people share outfits and tag the clothes and accessories they're wearing. Modest fashion and traditional Gulf dress are common.
+const SYSTEM_PROMPT = `You review photos uploaded to Copp IT, a fashion app in the United Arab Emirates where people share outfits and tag the clothes and accessories they're wearing. Modest fashion and traditional Gulf dress are common.
 
 For each photo, return two things.
 

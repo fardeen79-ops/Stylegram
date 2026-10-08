@@ -173,7 +173,7 @@ export async function seedDemo(ctx: Ctx, opts: { password: string; log?: Pick<Co
   const dune = brandAccount("dunefootwear", "Dune Footwear", "https://dunefootwear.example", "Everyday sneakers and sandals made for UAE summers.");
   const alseef = brandAccount("alseefleather", "Al Seef Leather", "https://alseef.example", "Leather bags and small goods, designed in Sharjah.");
   const saffron = brandAccount("saffronsand", "Saffron & Sand", "https://saffronsand.example", "Abayas, kaftans and shaylas for every occasion.");
-  // Brands running a Stylegram commission program (so Shop links show the commission disclosure).
+  // Brands running a Copp IT commission program (so Shop links show the commission disclosure).
   ctx.db.prepare("UPDATE brands SET commission_bps = 1000 WHERE slug IN (?, ?)").run(creek.slug, alseef.slug);
   ctx.db.prepare("UPDATE brands SET commission_bps = 1200 WHERE slug = ?").run(saffron.slug);
 

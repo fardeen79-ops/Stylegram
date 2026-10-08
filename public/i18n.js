@@ -83,48 +83,48 @@ export const SHORT_UNITS = {
 
 /** Messages for server error codes, so errors read in the user's language. */
 export const ERROR_MESSAGES = {
-  CONTENT_REJECTED: "This photo can't be posted because it appears to contain nudity or sexual content. Stylegram doesn't allow that.",
+  CONTENT_REJECTED: "This photo can't be posted because it appears to contain nudity or sexual content. Copp IT doesn't allow that.",
   AI_UNAVAILABLE: "That isn't available right now. Please try again in a moment.",
   RATE_LIMITED: "You've done that a lot. Try again in a little while.",
 };
 
 const AR = {
   // Errors & connectivity
-  "This photo can't be posted because it appears to contain nudity or sexual content. Stylegram doesn't allow that.":
-    "لا يمكن نشر هذه الصورة لأنها تبدو أنها تحتوي على عُري أو محتوى جنسي، وهذا غير مسموح به في Stylegram.",
+  "This photo can't be posted because it appears to contain nudity or sexual content. Copp IT doesn't allow that.":
+    "لا يمكن نشر هذه الصورة لأنها تبدو أنها تحتوي على عُري أو محتوى جنسي، وهذا غير مسموح به في Copp IT.",
   "That isn't available right now. Please try again in a moment.": "هذه الميزة غير متاحة الآن. يُرجى المحاولة بعد قليل.",
   "You've done that a lot. Try again in a little while.": "لقد كررت ذلك كثيرًا. حاول مرة أخرى بعد قليل.",
   "Wrong username or password": "اسم المستخدم أو كلمة المرور غير صحيحة",
   "You're offline. Check your connection and try again.": "أنت غير متصل بالإنترنت. تحقّق من اتصالك وحاول مرة أخرى.",
-  "Couldn't reach Stylegram. Check your connection and try again.": "تعذّر الوصول إلى Stylegram. تحقّق من اتصالك وحاول مرة أخرى.",
+  "Couldn't reach Copp IT. Check your connection and try again.": "تعذّر الوصول إلى Copp IT. تحقّق من اتصالك وحاول مرة أخرى.",
   "You're offline. Showing what you saw last time.": "أنت غير متصل. نعرض لك ما شاهدته في المرة الأخيرة.",
   "You're offline. Some things won't load until you reconnect.": "أنت غير متصل. لن يتم تحميل بعض المحتوى حتى تعود للاتصال.",
   "Back online.": "عدت إلى الاتصال.",
   "You're offline": "أنت غير متصل",
   "Can't connect right now": "تعذّر الاتصال الآن",
   "This page hasn't been saved for offline use yet. Reconnect to see it.": "لم تُحفظ هذه الصفحة للاستخدام دون اتصال بعد. اتصل بالإنترنت لعرضها.",
-  "Stylegram couldn't be reached. Pages you've already seen still open.": "تعذّر الوصول إلى Stylegram. الصفحات التي شاهدتها سابقًا ما زالت متاحة.",
+  "Copp IT couldn't be reached. Pages you've already seen still open.": "تعذّر الوصول إلى Copp IT. الصفحات التي شاهدتها سابقًا ما زالت متاحة.",
   "Try again": "حاول مرة أخرى",
   "Sorry, this page isn't available.": "عذرًا، هذه الصفحة غير متاحة.",
-  "Go back to Stylegram": "العودة إلى Stylegram",
+  "Go back to Copp IT": "العودة إلى Copp IT",
 
   // Install
-  "Stylegram was added to your home screen.": "تمت إضافة Stylegram إلى الشاشة الرئيسية.",
-  "Install Stylegram": "تثبيت Stylegram",
+  "Copp IT was added to your home screen.": "تمت إضافة Copp IT إلى الشاشة الرئيسية.",
+  "Install Copp IT": "تثبيت Copp IT",
   "Open your browser's menu and choose <b>Install app</b> or <b>Add to Home screen</b>. Installing needs a secure (https) address. On your own computer, http://localhost works too.":
     "افتح قائمة المتصفح واختر <b>تثبيت التطبيق</b> أو <b>إضافة إلى الشاشة الرئيسية</b>. يتطلب التثبيت عنوانًا آمنًا (https)، ويعمل أيضًا http://localhost على جهازك.",
   OK: "حسنًا",
-  "Add Stylegram to your Home Screen": "أضِف Stylegram إلى الشاشة الرئيسية",
+  "Add Copp IT to your Home Screen": "أضِف Copp IT إلى الشاشة الرئيسية",
   "Tap the <b>Share</b> button {icon} in Safari's toolbar.": "اضغط على زر <b>المشاركة</b> {icon} في شريط أدوات Safari.",
   "Scroll down and tap <b>Add to Home Screen</b>.": "مرّر للأسفل واضغط على <b>إضافة إلى الشاشة الرئيسية</b>.",
-  "Tap <b>Add</b>. Stylegram opens full-screen, like an app.": "اضغط على <b>إضافة</b>. سيفتح Stylegram بملء الشاشة مثل التطبيق.",
+  "Tap <b>Add</b>. Copp IT opens full-screen, like an app.": "اضغط على <b>إضافة</b>. سيفتح Copp IT بملء الشاشة مثل التطبيق.",
   "Got it": "فهمت",
   Dismiss: "إغلاق",
   "Get the full-screen app on your phone": "احصل على التطبيق بملء الشاشة على هاتفك",
   Install: "تثبيت",
   Add: "إضافة",
   "Install app": "تثبيت التطبيق",
-  "Add Stylegram to Home Screen": "إضافة Stylegram إلى الشاشة الرئيسية",
+  "Add Copp IT to Home Screen": "إضافة Copp IT إلى الشاشة الرئيسية",
 
   // Navigation
   Home: "الرئيسية",
@@ -199,8 +199,8 @@ const AR = {
   "More looks with this item": "إطلالات أخرى بهذا المنتج",
   "See brand page": "صفحة العلامة التجارية",
   Close: "إغلاق",
-  "Stylegram and @{user} may earn a commission if you buy through this link.": "قد يحصل Stylegram و@{user} على عمولة إذا اشتريت عبر هذا الرابط.",
-  "Stylegram may earn a commission if you buy through this link.": "قد يحصل Stylegram على عمولة إذا اشتريت عبر هذا الرابط.",
+  "Copp IT and @{user} may earn a commission if you buy through this link.": "قد يحصل Copp IT و@{user} على عمولة إذا اشتريت عبر هذا الرابط.",
+  "Copp IT may earn a commission if you buy through this link.": "قد يحصل Copp IT على عمولة إذا اشتريت عبر هذا الرابط.",
   Delete: "حذف",
   Unfollow: "إلغاء المتابعة",
   "Go to post": "الانتقال إلى المنشور",
@@ -225,7 +225,7 @@ const AR = {
   Follow: "متابعة",
   Following: "تتابعه",
   "You're following everyone. Nice.": "أنت تتابع الجميع. رائع!",
-  "Welcome to Stylegram": "مرحبًا بك في Stylegram",
+  "Welcome to Copp IT": "مرحبًا بك في Copp IT",
   "Follow people and brands to see their looks here, or share your own outfit.": "تابِع الأشخاص والعلامات التجارية لرؤية إطلالاتهم هنا، أو شارك إطلالتك.",
   "Share a look": "شارك إطلالة",
   "Popular brand": "علامة تجارية رائجة",
@@ -248,7 +248,7 @@ const AR = {
   "Edit profile": "تعديل الملف الشخصي",
   Shop: "تسوّق",
   Options: "خيارات",
-  "Shop on Stylegram": "تسوّق على Stylegram",
+  "Shop on Copp IT": "تسوّق على Copp IT",
   Posts: "المنشورات",
   "Share your first look": "شارك أول إطلالة لك",
   "When you share photos and tag what you're wearing, they'll appear on your profile.": "عندما تشارك صورًا وتُشير إلى ما ترتديه، ستظهر في ملفك الشخصي.",
@@ -301,7 +301,7 @@ const AR = {
   Clear: "مسح",
   "No products yet": "لا توجد منتجات بعد",
   "This brand hasn't added its catalog yet.": "لم تُضِف هذه العلامة التجارية منتجاتها بعد.",
-  "Products appear once the brand joins Stylegram.": "تظهر المنتجات عند انضمام العلامة التجارية إلى Stylegram.",
+  "Products appear once the brand joins Copp IT.": "تظهر المنتجات عند انضمام العلامة التجارية إلى Copp IT.",
   "No looks yet": "لا توجد إطلالات بعد",
   "Nobody has tagged this yet.": "لم يُشر أحد إلى هذا بعد.",
 
@@ -401,12 +401,12 @@ const AR = {
   "Attribution window (days)": "مدة الإسناد (أيام)",
   "Turn on": "تفعيل",
   "Turn off": "إيقاف",
-  "Sales via Stylegram": "المبيعات عبر Stylegram",
+  "Sales via Copp IT": "المبيعات عبر Copp IT",
   "Commission pending": "عمولات قيد الانتظار",
   "Commission approved": "عمولات معتمدة",
   "Connect your store": "اربط متجرك",
-  "Stylegram adds <code>sg_click</code> to every Shop link. Keep it (for example in a cookie) until checkout, then have your <b>server</b> report the order. Never put your API key in your website's code.":
-    "يضيف Stylegram المعامل <code>sg_click</code> إلى كل رابط تسوّق. احتفظ به (مثلًا في ملف تعريف ارتباط) حتى إتمام الشراء، ثم اجعل <b>خادمك</b> يُبلغ عن الطلب. لا تضع مفتاح API في كود موقعك أبدًا.",
+  "Copp IT adds <code>sg_click</code> to every Shop link. Keep it (for example in a cookie) until checkout, then have your <b>server</b> report the order. Never put your API key in your website's code.":
+    "يضيف Copp IT المعامل <code>sg_click</code> إلى كل رابط تسوّق. احتفظ به (مثلًا في ملف تعريف ارتباط) حتى إتمام الشراء، ثم اجعل <b>خادمك</b> يُبلغ عن الطلب. لا تضع مفتاح API في كود موقعك أبدًا.",
   "API key: {key}": "مفتاح API: {key}",
   "none yet": "لا يوجد بعد",
   "Replace key": "استبدال المفتاح",
@@ -424,14 +424,14 @@ const AR = {
   "Copied.": "تم النسخ.",
 
   // Earnings
-  "When someone buys an item you tagged, from a brand with a Stylegram commission program, you earn {share}% of the commission. Earnings stay pending for {days} days (the refund window), then they're approved.":
-    "عندما يشتري أحدهم منتجًا أشرت إليه من علامة تجارية لديها برنامج عمولات على Stylegram، تحصل على {share}% من العمولة. تبقى الأرباح قيد الانتظار {days} يومًا (فترة الاسترداد) ثم تُعتمد.",
+  "When someone buys an item you tagged, from a brand with a Copp IT commission program, you earn {share}% of the commission. Earnings stay pending for {days} days (the refund window), then they're approved.":
+    "عندما يشتري أحدهم منتجًا أشرت إليه من علامة تجارية لديها برنامج عمولات على Copp IT، تحصل على {share}% من العمولة. تبقى الأرباح قيد الانتظار {days} يومًا (فترة الاسترداد) ثم تُعتمد.",
   Pending: "قيد الانتظار",
   Approved: "معتمدة",
   look: "الإطلالة",
   "No earnings yet": "لا توجد أرباح بعد",
   "Tag the exact products you're wearing. When people shop your looks, sales show up here.": "أشِر إلى المنتجات التي ترتديها بدقة. عندما يتسوّق الناس من إطلالاتك ستظهر المبيعات هنا.",
-  "Payouts aren't automatic yet. Approved earnings are paid out by the Stylegram team.": "الدفعات ليست تلقائية بعد. يدفع فريق Stylegram الأرباح المعتمدة.",
+  "Payouts aren't automatic yet. Approved earnings are paid out by the Copp IT team.": "الدفعات ليست تلقائية بعد. يدفع فريق Copp IT الأرباح المعتمدة.",
 
   // Admin
   "Brands waiting for verification": "علامات تجارية بانتظار التحقق",

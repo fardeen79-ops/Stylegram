@@ -1,10 +1,10 @@
-// Generates the app icons (price tag on the Stylegram indigo→teal gradient) in public/icons from one SVG design. Run: node scripts/make-icons.mjs
+// Generates the app icons (price tag on the Copp IT indigo→teal gradient) in public/icons from one SVG design. Run: node scripts/make-icons.mjs
 import sharp from "sharp";
 
 const gradient = `<linearGradient id="g" x1="0" y1="1" x2="1" y2="0">
   <stop offset="0" stop-color="#4f46e5"/><stop offset="1" stop-color="#14b8a6"/></linearGradient>`;
 
-/** White price-tag mark (Stylegram's tagging), centred, at `scale` of the canvas. */
+/** White price-tag mark (Copp IT's tagging), centred, at `scale` of the canvas. */
 const bag = (scale) => {
   const s = 512 * scale, o = (512 - s) / 2, k = s / 24;
   return `<g transform="translate(${o} ${o}) scale(${k}) rotate(-8 12 12)">

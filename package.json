@@ -1,5 +1,5 @@
 {
-  "name": "stylegram",
+  "name": "coppit",
   "version": "0.1.0",
   "description": "Photo-sharing app where people tag the clothes and accessories in their photos to the actual brands and products",
   "main": "dist/server.js",
