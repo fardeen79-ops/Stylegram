@@ -3,7 +3,7 @@ import type { Category } from "../db.js";
 import { AppError } from "../errors.js";
 import { mediaUrl } from "../media.js";
 import { slugify } from "../util.js";
-import { getUser } from "./users.js";
+import { getUser, userSummary, type UserRow } from "./users.js";
 
 export interface BrandRow {
   id: number;
@@ -49,7 +49,54 @@ export function publicBrand(ctx: Ctx, b: BrandRow) {
     account: owner && b.verified ? { username: owner.username } : null,
     postCount: stats.posts,
     tagCount: stats.tags,
+    creators: brandCreators(ctx, b),
   };
+}
+
+/** People who wear the brand: most tags first (the brand's own account excluded). */
+function brandCreators(ctx: Ctx, b: BrandRow, limit = 10) {
+  const rows = ctx.db
+    .prepare(
+      `SELECT u.* FROM users u JOIN posts p ON p.user_id = u.id JOIN tags t ON t.post_id = p.id
+       WHERE t.brand_id = ? AND t.status != 'REJECTED' AND u.id IS NOT ?
+       GROUP BY u.id ORDER BY COUNT(*) DESC, MAX(t.id) DESC LIMIT ?`,
+    )
+    .all(b.id, b.owner_id, limit) as UserRow[];
+  return rows.map((u) => userSummary(ctx, u));
+}
+
+/** Where a product appears in a look: the newest tagged photo and the tag's position, for product pictures. */
+function productLook(ctx: Ctx, productId: number) {
+  const r = ctx.db
+    .prepare(
+      `SELECT t.post_id, t.x, t.y, i.path, i.width, i.height FROM tags t JOIN post_images i ON i.id = t.image_id
+       WHERE t.product_id = ? AND t.status != 'REJECTED' ORDER BY (t.status = 'CONFIRMED') DESC, t.id DESC LIMIT 1`,
+    )
+    .get(productId) as { post_id: number; x: number; y: number; path: string; width: number; height: number } | undefined;
+  return r ? { postId: r.post_id, imageUrl: mediaUrl(r.path), x: r.x, y: r.y, width: r.width, height: r.height } : null;
+}
+
+/** Product for the public shop tab: includes a photo of it from a look when there is one. */
+export function shopProduct(ctx: Ctx, p: ProductRow) {
+  return { ...publicProduct(p), look: productLook(ctx, p.id) };
+}
+
+/** Brands people are tagging most in the last 30 days (verified first), with a recent look as a cover. */
+export function trendingBrands(ctx: Ctx, limit = 12) {
+  const since = new Date(ctx.now().getTime() - 30 * 86_400_000).toISOString();
+  const rows = ctx.db
+    .prepare(
+      `SELECT b.*, COUNT(DISTINCT t.post_id) AS looks, MAX(t.post_id) AS latest FROM brands b
+       JOIN tags t ON t.brand_id = b.id AND t.status != 'REJECTED' JOIN posts p ON p.id = t.post_id
+       WHERE p.created_at >= ? GROUP BY b.id ORDER BY b.verified DESC, looks DESC, latest DESC LIMIT ?`,
+    )
+    .all(since, limit) as (BrandRow & { looks: number; latest: number })[];
+  return rows.map((b) => {
+    const cover = ctx.db
+      .prepare("SELECT thumb_path FROM post_images WHERE post_id = ? ORDER BY position LIMIT 1")
+      .get(b.latest) as { thumb_path: string } | undefined;
+    return { ...brandSummary(b), looks: b.looks, coverUrl: mediaUrl(cover?.thumb_path ?? null) };
+  });
 }
 
 export function publicProduct(p: ProductRow) {

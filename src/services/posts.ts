@@ -228,7 +228,23 @@ function postCard(ctx: Ctx, row: { id: number }) {
               (SELECT COUNT(*) FROM comments WHERE post_id = @id) AS comments`,
     )
     .get({ id: row.id }) as { images: number; tags: number; likes: number; comments: number };
-  return { id: row.id, thumbUrl: mediaUrl(img.thumb_path), imageUrl: mediaUrl(img.path), ...counts };
+  // What the look is shopping: the first tagged brand (confirmed tags first) and its product's price.
+  const shop = ctx.db
+    .prepare(
+      `SELECT b.name AS brand, pr.price_cents, pr.currency FROM tags t JOIN brands b ON b.id = t.brand_id
+       LEFT JOIN products pr ON pr.id = t.product_id
+       WHERE t.post_id = ? AND t.status != 'REJECTED' ORDER BY (t.status = 'CONFIRMED') DESC, t.id LIMIT 1`,
+    )
+    .get(row.id) as { brand: string; price_cents: number | null; currency: string | null } | undefined;
+  return {
+    id: row.id,
+    thumbUrl: mediaUrl(img.thumb_path),
+    imageUrl: mediaUrl(img.path),
+    ...counts,
+    shop: shop
+      ? { brand: shop.brand, price: shop.price_cents === null ? null : (shop.price_cents / 100).toFixed(2), currency: shop.currency }
+      : null,
+  };
 }
 
 export interface Page {

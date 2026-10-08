@@ -36,15 +36,22 @@ const PHOTOS = {
 } as const;
 type PhotoKey = keyof typeof PHOTOS;
 
-const FALLBACK_COLORS = ["#e9e4dc", "#dfe9e4", "#fde2e4", "#e3e8f3", "#f3ead7", "#e6e1f0"];
+// Soft brand-tinted gradients for placeholders (no text, so no fonts are needed on the server).
+const FALLBACK_GRADIENTS = [
+  ["#ede9fe", "#ccfbf1"], ["#fde68a", "#fbcfe8"], ["#e0e7ff", "#f5d0fe"],
+  ["#d1fae5", "#e0f2fe"], ["#fef3c7", "#fee2e2"], ["#e2e8f0", "#ddd6fe"],
+];
 let fallbacks = 0;
 
-/** Plain placeholder used when a photo can't be downloaded (e.g. offline). */
-async function placeholder(label: string): Promise<Buffer> {
-  const bg = FALLBACK_COLORS[fallbacks++ % FALLBACK_COLORS.length];
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350">
-    <rect width="1080" height="1350" fill="${bg}"/>
-    <text x="540" y="675" font-family="sans-serif" font-size="44" fill="#555" text-anchor="middle">${label.replace(/[<&>]/g, "")}</text>
+/** Placeholder used when a photo can't be downloaded (e.g. offline): a gradient with a hanger. */
+async function placeholder(): Promise<Buffer> {
+  const [a, b] = FALLBACK_GRADIENTS[fallbacks++ % FALLBACK_GRADIENTS.length]!;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">
+    <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs>
+    <rect width="1080" height="1350" fill="url(#g)"/>
+    <g transform="translate(540 675) scale(9)" fill="none" stroke="#ffffff" stroke-opacity="0.85" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M0 -4.6 -8.6 1.8a1.4 1.4 0 0 0 .84 2.5h15.52a1.4 1.4 0 0 0 .84-2.5z"/><path d="M0 -4.6v-1.1a1.9 1.9 0 1 0-1.9-1.9"/>
+    </g>
   </svg>`;
   return sharp(Buffer.from(svg)).jpeg({ quality: 85 }).toBuffer();
 }
@@ -205,7 +212,7 @@ export async function seedDemo(ctx: Ctx, opts: { password: string; log?: Pick<Co
     for (const [i, key] of photos.entries()) {
       const buf = await downloadPhoto(key, log);
       if (!buf) missing.push(i);
-      images.push(await storeImage(ctx.config, buf ?? (await placeholder(PHOTOS[key].alt))));
+      images.push(await storeImage(ctx.config, buf ?? (await placeholder())));
     }
     const postId = createPost(ctx, userId, images, caption, tags);
     for (const i of missing) {

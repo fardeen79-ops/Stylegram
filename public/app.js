@@ -447,21 +447,37 @@ function mediaHtml(p) {
       <div class="track">${slides}</div>
       <div class="burst">${icons.heart(true)}</div>
       ${multi ? `<span class="count">1/${p.images.length}</span><button class="arrow prev" hidden aria-label="${t("Previous")}">${icons.chevronLeft()}</button><button class="arrow next" aria-label="${t("Next")}">${icons.chevronRight()}</button>` : ""}
-      <button class="bag-btn" ${p.images[0].tags.length ? "" : "hidden"} aria-label="${t("Show tagged products")}">${icons.bag(true)}</button>
+      <button class="bag-btn" ${p.images[0].tags.length ? "" : "hidden"} aria-label="${t("Show tagged products")}">${icons.bag(true)}<span>${n(p.images[0].tags.length)}</span></button>
     </div>
     ${multi ? `<div class="dots">${p.images.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>` : ""}`;
 }
 
 function allTags(p) { return p.images.flatMap((img) => img.tags).filter((tg) => tg.status !== "REJECTED" || p.isMine); }
+const tagImage = (p, tg) => p.images.find((img) => img.tags.includes(tg));
+
+/**
+ * Background style for a square close-up of a photo around (x, y): a product shot cut from the look,
+ * so products have a picture even though brands don't upload any.
+ */
+function closeUp(url, width, height, x, y, zoom = 2.6) {
+  const r = width / height;
+  const z = Math.max(zoom, r); // always cover the box vertically too
+  const imgH = z / r;
+  const pos = (v, size) => (size <= 1 ? 50 : clamp((0.5 - v * size) / (1 - size), 0, 1) * 100);
+  return `background-image:url('${esc(url)}');background-size:${z * 100}% auto;background-position:${pos(x, z).toFixed(1)}% ${pos(y, imgH).toFixed(1)}%`;
+}
+const tagCloseUp = (img, tg) => (img ? closeUp(img.url, img.width, img.height, tg.x, tg.y) : "");
 
 function shopStrip(p) {
   const tags = allTags(p);
   if (!tags.length) return "";
-  return `<div class="shop-strip">${tags.map((tg) => `
+  return `<div class="shop-head"><span class="b">${t("Shop this look")}</span><span class="muted small">${tn("item", tags.length, n(tags.length))}</span></div>
+    <div class="shop-strip">${tags.map((tg) => `
     <button class="shop-card" data-tag="${tg.id}">
-      <span class="logo">${tg.brand.logoUrl ? `<img src="${esc(tg.brand.logoUrl)}" alt="" />` : esc(tg.brand.name[0])}</span>
-      <span class="txt"><span class="b">${esc(tg.brand.name)}${vf(tg.brand.verified)}</span>
-        <span class="p">${esc(tg.product?.name ?? tg.label)}${tg.product?.price ? ` · ${esc(money(tg.product))}` : ""}</span></span>
+      <span class="thumb" style="${tagCloseUp(tagImage(p, tg), tg)}"></span>
+      <span class="txt"><span class="brand">${esc(tg.brand.name)}${vf(tg.brand.verified)}</span>
+        <span class="p">${esc(tg.product?.name ?? tg.label)}</span>
+        ${tg.product?.price ? `<span class="price">${esc(money(tg.product))}</span>` : `<span class="price muted">${esc(catLabel(tg.category))}</span>`}</span>
     </button>`).join("")}</div>`;
 }
 
@@ -608,9 +624,12 @@ function productSheet(tg, post) {
     <div class="brandline"><span class="logo">${tg.brand.logoUrl ? `<img src="${esc(tg.brand.logoUrl)}" alt="" />` : esc(tg.brand.name[0])}</span>
       <div><a class="b" href="#/b/${esc(tg.brand.slug)}" data-close>${esc(tg.brand.name)}</a>${vf(tg.brand.verified)}
         <div class="muted small">${tg.brand.verified ? t("Verified brand") : t("Community brand page")}</div></div></div>
-    <h3>${esc(p?.name ?? tg.label)}</h3>
-    ${p?.price ? `<div class="price">${esc(money(p))}</div>` : ""}
-    <div class="muted" style="text-transform:capitalize">${esc(catLabel(tg.category))}</div>
+    <div class="ps-hero">
+      ${post ? `<span class="thumb" style="${tagCloseUp(tagImage(post, tg), tg)}"></span>` : ""}
+      <div><h3>${esc(p?.name ?? tg.label)}</h3>
+        ${p?.price ? `<div class="price">${esc(money(p))}</div>` : ""}
+        <div class="muted" style="text-transform:capitalize">${esc(catLabel(tg.category))}</div></div>
+    </div>
     <div style="margin-top:8px">${tg.status === "CONFIRMED" ? `<span class="ok-badge">${t("✓ Confirmed by {brand}", { brand: esc(tg.brand.name) })}</span>`
       : tg.status === "REJECTED" ? `<span class="bad-badge">${t("{brand} says this isn't their item", { brand: esc(tg.brand.name) })}</span>`
       : `<span class="muted small">${t("Tagged by the creator · not yet confirmed by the brand")}</span>`}</div>
@@ -682,7 +701,9 @@ function mountPost(el, p, { detail = false } = {}) {
     const prev = $(".arrow.prev", media), next = $(".arrow.next", media);
     if (prev) prev.hidden = index === 0;
     if (next) next.hidden = index === p.images.length - 1;
-    $(".bag-btn", media).hidden = !p.images[index]?.tags.length;
+    const bag = $(".bag-btn", media);
+    bag.hidden = !p.images[index]?.tags.length;
+    $("span", bag).textContent = n(p.images[index]?.tags.length ?? 0);
   };
   track.addEventListener("scroll", () => requestAnimationFrame(sync), { passive: true });
 
@@ -845,6 +866,7 @@ function tileHtml(c, cls = "") {
   return `<a class="tile ${cls}" href="#/p/${c.id}">
     <img src="${esc(cls.includes("tall") ? c.imageUrl : c.thumbUrl)}" alt="" loading="lazy" />
     <span class="badges">${c.images > 1 ? icons.images() : ""}${c.tags ? icons.bag(true) : ""}</span>
+    ${c.shop ? `<span class="shop-label"><b>${esc(c.shop.brand)}</b>${c.shop.price ? `<span>${esc(fmtMoney(c.shop.price, c.shop.currency))}</span>` : ""}</span>` : ""}
     <span class="hover"><span>${icons.heart(true)} ${n(c.likes)}</span><span>${icons.comment()} ${n(c.comments ?? 0)}</span></span>
   </a>`;
 }
@@ -884,7 +906,19 @@ async function explorePage(params) {
       ${state.categories.map((c) => `<a class="chip ${c === category ? "on" : ""}" href="${href({ category: c })}">${esc(catLabel(c))}</a>`).join("")}
     </div>
     ${q ? `<h2 class="page-title">${t("Looks matching “{q}”", { q: `<bdi>${esc(q)}</bdi>` })}</h2>` : ""}
+    ${!q && !category ? `${discoverHtml()}<div id="trending"></div><h2 class="section-title">${t("Looks for you")}</h2>` : ""}
     <div id="grid"></div></div>`;
+  if (!q && !category) {
+    api("/brands/trending").then((brands) => {
+      if (!brands.length || !$("#trending")) return;
+      $("#trending").innerHTML = `<h2 class="section-title">${t("Trending brands")}</h2>
+        <div class="rail">${brands.map((b) => `<a class="brand-card" href="#/b/${esc(b.slug)}">
+          <span class="cover" ${b.coverUrl ? `style="background-image:url('${esc(b.coverUrl)}')"` : ""}></span>
+          ${avatar({ name: b.name, avatarUrl: b.logoUrl }, 44)}
+          <span class="name">${esc(b.name)}${vf(b.verified)}</span>
+          <span class="muted small">${tn("look", b.looks, n(b.looks))}</span></a>`).join("")}</div>`;
+    }).catch(() => {});
+  }
 
   const input = $("#search input");
   const results = $("#results");
@@ -914,6 +948,21 @@ async function explorePage(params) {
     explore: true,
     empty: `<div class="grid-empty"><div class="circle-icon">${icons.search()}</div><div class="big">${t("No results found")}</div>${t("Try a brand name, an item like “sneakers”, or a #hashtag.")}</div>`,
   });
+}
+
+/** "Shop by occasion": curated searches. Each query matches captions, brands and item names. */
+const OCCASIONS = [
+  { label: "Eid", q: "العيد", emoji: "🌙", bg: "linear-gradient(135deg,#312e81,#7c3aed)" },
+  { label: "Weekend", q: "weekend", emoji: "☀️", bg: "linear-gradient(135deg,#f59e0b,#f43f5e)" },
+  { label: "Desert drive", q: "desert", emoji: "🌵", bg: "linear-gradient(135deg,#b45309,#facc15)" },
+  { label: "Souk run", q: "souk", emoji: "🛍️", bg: "linear-gradient(135deg,#0f766e,#14b8a6)" },
+  { label: "Modest", q: "abaya", emoji: "🖤", bg: "linear-gradient(135deg,#111827,#4b5563)" },
+  { label: "Denim days", q: "denim", emoji: "👖", bg: "linear-gradient(135deg,#1d4ed8,#60a5fa)" },
+];
+function discoverHtml() {
+  return `<h2 class="section-title">${t("Shop by occasion")}</h2>
+    <div class="rail">${OCCASIONS.map((o) => `<a class="occasion" style="background:${o.bg}" href="#/explore?q=${encodeURIComponent(o.q)}">
+      <span class="emoji">${o.emoji}</span><span class="label">${t(o.label)}</span></a>`).join("")}</div>`;
 }
 
 async function postPage(id) {
@@ -1009,21 +1058,28 @@ async function brandPage(slug, params) {
   const tab = params.get("tab") === "shop" ? "shop" : "posts";
   const productId = params.get("product");
   const [b, products] = await Promise.all([api(`/brands/${slug}`), api(`/brands/${slug}/products`)]);
+  const account = b.account ? await api(`/users/${encodeURIComponent(b.account.username)}`).catch(() => null) : null;
   const selected = products.find((p) => String(p.id) === productId);
-  view.innerHTML = `<div class="profile-wrap">
+  const followBtn = !account || account.isMe ? ""
+    : state.me ? `<button class="btn ${account.isFollowing ? "" : "primary"}" id="follow">${account.isFollowing ? t("Following") : t("Follow")}</button>`
+    : `<a class="btn primary" href="#/login">${t("Follow")}</a>`;
+  view.innerHTML = `<div class="profile-wrap brand-page">
+    <div class="brand-cover"></div>
     <header class="profile">
       <div class="pic">${avatar({ name: b.name, avatarUrl: b.logoUrl }, 150)}</div>
       <div><div class="top"><h2>${esc(b.name)}</h2>${vf(b.verified)}
-        <div class="buttons">${b.website ? `<a class="btn primary" href="${esc(b.website)}" target="_blank" rel="noopener nofollow">${t("Visit store")}</a>` : ""}
-          ${b.account ? `<a class="btn" href="#/u/${esc(b.account.username)}">@${esc(b.account.username)}</a>` : ""}</div></div></div>
+        <div class="buttons">${followBtn}
+          ${b.website ? `<a class="btn ${followBtn ? "" : "primary"}" href="${esc(b.website)}" target="_blank" rel="noopener nofollow">${t("Visit store")}</a>` : ""}</div></div></div>
       <div class="stats"><span><b>${n(b.postCount)}</b> ${tl("looks", b.postCount)}</span><span><b>${n(b.tagCount)}</b> ${tl("tagged items", b.tagCount)}</span><span><b>${n(products.length)}</b> ${tl("products", products.length)}</span></div>
       <div class="info">
-        <div class="name">${b.verified ? t("Brand") : t("Community brand page")}</div>
+        <div class="name">${b.verified ? t("Brand") : t("Community brand page")}${b.account ? ` · <a class="handle" href="#/u/${esc(b.account.username)}">@${esc(b.account.username)}</a>` : ""}</div>
         ${b.description ? `<div class="bio" style="white-space:pre-wrap">${esc(b.description)}</div>` : ""}
         ${!b.claimed ? `<div class="muted small" style="margin-top:6px">${t(`Created from people's tags. Is this your brand? <a class="text-btn" href="#/signup">Claim it</a>`)}</div>` : ""}
       </div>
     </header>
-    <nav class="ptabs">
+    ${b.creators?.length ? `<div class="worn-by"><div class="section-title">${t("Worn by")}</div>
+      <div class="stories">${b.creators.map((u) => `<a class="story" href="#/u/${esc(u.username)}">${avatar(u, 56, { ring: true })}<span class="name">${esc(u.username)}</span></a>`).join("")}</div></div>` : ""}
+    <nav class="ptabs labeled">
       <a href="#/b/${esc(slug)}" class="${tab === "posts" ? "on" : ""}">${icons.grid(tab === "posts")}<span class="label">${t("Seen on")}</span></a>
       <a href="#/b/${esc(slug)}?tab=shop" class="${tab === "shop" ? "on" : ""}">${icons.shop(tab === "shop")}<span class="label">${t("Shop")}</span></a>
     </nav>
@@ -1031,12 +1087,21 @@ async function brandPage(slug, params) {
       <span class="row"><a class="btn primary" href="${esc(selected.url)}" target="_blank" rel="noopener nofollow">${t("Buy")}</a><a class="btn" href="#/b/${esc(slug)}">${t("Clear")}</a></span></div>` : ""}
     <div id="grid"></div></div>`;
   if (!matchMedia("(min-width: 736px)").matches) $(".profile").append($(".profile .stats"));
+  $("#follow")?.addEventListener("click", safe(async (e) => {
+    const btn = e.currentTarget;
+    account.isFollowing = !account.isFollowing;
+    await api(`/users/${encodeURIComponent(account.username)}/follow`, { method: account.isFollowing ? "PUT" : "DELETE" });
+    btn.textContent = account.isFollowing ? t("Following") : t("Follow");
+    btn.classList.toggle("primary", !account.isFollowing);
+  }));
 
   if (tab === "shop") {
     $("#grid").innerHTML = products.length
-      ? `<div class="products" style="padding:12px">${products.map((p) => `
-          <a class="product" href="#/b/${esc(slug)}?product=${p.id}"><span class="n">${esc(p.name)}</span>
-          <span class="muted" style="text-transform:capitalize">${esc(catLabel(p.category))}</span><span class="b">${esc(money(p))}</span></a>`).join("")}</div>`
+      ? `<div class="products">${products.map((p) => `
+          <a class="product" href="#/b/${esc(slug)}?product=${p.id}">
+          <span class="pimg" ${p.look ? `style="${closeUp(p.look.imageUrl, p.look.width, p.look.height, p.look.x, p.look.y, 2)}"` : ""}>${p.look ? "" : icons.bag()}</span>
+          <span class="n">${esc(p.name)}</span>
+          <span class="muted small" style="text-transform:capitalize">${esc(catLabel(p.category))}</span><span class="b">${esc(money(p))}</span></a>`).join("")}</div>`
       : `<div class="grid-empty"><div class="circle-icon">${icons.bag()}</div><div class="big">${t("No products yet")}</div>${b.claimed ? t("This brand hasn't added its catalog yet.") : t("Products appear once the brand joins Stylegram.")}</div>`;
     return;
   }

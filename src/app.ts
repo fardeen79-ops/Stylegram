@@ -23,6 +23,8 @@ import {
   publicProduct,
   reviewTag,
   searchBrands,
+  shopProduct,
+  trendingBrands,
   setBrandLogo,
   updateBrand,
   updateProduct,
@@ -391,13 +393,17 @@ export function createApp(ctx: Ctx) {
     res.json(searchBrands(ctx, String(req.query.q ?? "")).map(brandSummary));
   });
 
+  api.get("/brands/trending", (_req, res) => {
+    res.json(trendingBrands(ctx));
+  });
+
   api.get("/brands/:slug", (req, res) => {
     res.json(publicBrand(ctx, getBrandBySlug(ctx, String(req.params.slug))));
   });
 
   api.get("/brands/:slug/products", (req, res) => {
     const b = getBrandBySlug(ctx, String(req.params.slug));
-    res.json(listProducts(ctx, b.id, req.query.q ? String(req.query.q) : undefined).map(publicProduct));
+    res.json(listProducts(ctx, b.id, req.query.q ? String(req.query.q) : undefined).map((p) => shopProduct(ctx, p)));
   });
 
   api.get("/brands/:slug/posts", (req, res) => {

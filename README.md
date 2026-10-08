@@ -71,6 +71,13 @@ The layout is familiar to people who use social apps, with Stylegram's own visua
 - **Feed and posts:** a row of people you follow, suggestions, swipeable carousels, and double-tap to like
   with a rose heart and a ring animation. Product tags appear when you tap the photo, and a "Shop the look"
   strip opens a product sheet.
+- **Shopping:** every tagged item gets a picture, cut from the photo around its tag, so brands don't need to
+  upload product images. It appears on the "Shop this look" cards, the product sheet and the brand's Shop
+  tab. Photos show an item-count badge, and grid tiles show the brand and price.
+- **Discovery:** Explore opens with "Shop by occasion" (Eid, weekend, desert drive, souk…) and "Trending
+  brands" (most-tagged in the last 30 days, with a recent look as the cover).
+- **Brand pages:** a gradient cover, a Follow button for the brand's account, a "Worn by" row of creators who
+  tag the brand, and Seen on / Shop tabs.
 - **Everything else:** profile and brand grids, Explore with search and categories, a two-column post page
   on desktop, a "Create new post" flow with tap-to-tag, light and dark mode, and @mentions and #hashtags as
   links.

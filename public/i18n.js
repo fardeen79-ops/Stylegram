@@ -52,6 +52,14 @@ const PLURALS = {
     en: { one: "{n} like", other: "{n} likes" },
     ar: { zero: "لا إعجابات", one: "إعجاب واحد", two: "إعجابان", few: "{n} إعجابات", many: "{n} إعجابًا", other: "{n} إعجاب" },
   },
+  item: {
+    en: { one: "{n} item", other: "{n} items" },
+    ar: { one: "قطعة واحدة", two: "قطعتان", few: "{n} قطع", many: "{n} قطعة", other: "{n} قطعة" },
+  },
+  look: {
+    en: { one: "{n} look", other: "{n} looks" },
+    ar: { zero: "لا إطلالات", one: "إطلالة واحدة", two: "إطلالتان", few: "{n} إطلالات", many: "{n} إطلالة", other: "{n} إطلالة" },
+  },
   other: {
     en: { one: "{n} other", other: "{n} others" },
     ar: { one: "شخص آخر", two: "شخصين آخرين", few: "{n} أشخاص آخرين", many: "{n} شخصًا آخر", other: "{n} شخص آخر" },
@@ -246,6 +254,19 @@ const AR = {
   "When you share photos and tag what you're wearing, they'll appear on your profile.": "عندما تشارك صورًا وتُشير إلى ما ترتديه، ستظهر في ملفك الشخصي.",
   "Share your first photo": "شارك أول صورة",
   "No posts yet": "لا توجد منشورات بعد",
+
+  // Discovery & shopping
+  "Shop this look": "تسوّق الإطلالة",
+  "Shop by occasion": "تسوّق حسب المناسبة",
+  "Trending brands": "علامات رائجة",
+  "Looks for you": "إطلالات لك",
+  "Worn by": "يرتديها",
+  Eid: "العيد",
+  Weekend: "عطلة الأسبوع",
+  "Desert drive": "رحلة الصحراء",
+  "Souk run": "جولة السوق",
+  Modest: "أزياء محتشمة",
+  "Denim days": "أيام الجينز",
 
   // Brand page
   "Visit store": "زيارة المتجر",
