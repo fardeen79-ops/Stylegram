@@ -5,7 +5,7 @@
  */
 import sharp from "sharp";
 import type { Ctx } from "./context.js";
-import { storeImage } from "./media.js";
+import { deleteImages, storeImage } from "./media.js";
 import { createProduct } from "./services/brands.js";
 import { addComment, createPost, setLike, type TagInput } from "./services/posts.js";
 import { follow, registerUser, updateProfile } from "./services/users.js";
@@ -14,8 +14,9 @@ export const DEMO_USERNAMES = ["noor.styles", "omar.fits", "priya.wears", "creek
 
 /**
  * Demo photos from Unsplash (free to use under the Unsplash License, https://unsplash.com/license).
- * They're downloaded when you seed, not stored in the repo. Product shots have their item roughly
- * centred, so their tags sit at the centre; "look" photos open each carousel untagged.
+ * They're downloaded when you seed, not stored in the repo; any that fail are retried on later starts.
+ * Product shots have their item roughly centred, so their tags sit at the centre; "look" photos open
+ * each carousel untagged.
  */
 const PHOTOS = {
   denimLook: { id: "ItqFmSxKnIg", alt: "Blue denim jeans and brown leather shoes" },
@@ -48,43 +49,99 @@ async function placeholder(label: string): Promise<Buffer> {
   return sharp(Buffer.from(svg)).jpeg({ quality: 85 }).toBuffer();
 }
 
-/**
- * Unsplash's download link redirects to the original file (often 20-50+ megapixels). Ask its
- * image CDN for a 1600px version instead, which keeps memory low on small servers.
- */
-async function downloadUrl(id: string): Promise<string> {
-  const page = `https://unsplash.com/photos/${id}/download?force=true`;
-  try {
-    const res = await fetch(page, { redirect: "manual", signal: AbortSignal.timeout(15_000) });
-    const location = res.headers.get("location");
-    if (!location) return page;
-    const url = new URL(location, page);
-    if (url.hostname === "images.unsplash.com") {
-      url.searchParams.set("w", "1600");
-      url.searchParams.set("q", "85");
-      url.searchParams.set("fm", "jpg");
-    }
-    return url.toString();
-  } catch {
-    return page;
+// unsplash.com turns away requests that don't look like a browser (HTTP 403 from cloud servers).
+const BROWSER_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.15",
+  "Accept-Language": "en-US,en;q=0.9",
+};
+
+/** Ask Unsplash's image CDN for a 1600px version: originals are often 20-50+ megapixels. */
+function sized(raw: string): string {
+  const url = new URL(raw);
+  if (url.hostname === "images.unsplash.com") {
+    url.searchParams.set("w", "1600");
+    url.searchParams.set("q", "85");
+    url.searchParams.set("fm", "jpg");
   }
+  return url.toString();
 }
 
-async function photo(key: PhotoKey): Promise<Buffer> {
-  const p = PHOTOS[key];
+/** Candidate image URLs for a photo: the photo's JSON (what unsplash.com itself uses), then the download link. */
+async function imageUrls(id: string, errors: string[]): Promise<string[]> {
+  const urls: string[] = [];
   try {
-    const res = await fetch(await downloadUrl(p.id), { signal: AbortSignal.timeout(30_000) });
+    const res = await fetch(`https://unsplash.com/napi/photos/${id}`, {
+      headers: { ...BROWSER_HEADERS, Accept: "application/json" },
+      signal: AbortSignal.timeout(15_000),
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    // Originals can be very large: shrink before the normal upload pipeline.
-    return await sharp(Buffer.from(await res.arrayBuffer()), { limitInputPixels: false })
-      .rotate()
-      .resize({ width: 1600, withoutEnlargement: true })
-      .jpeg({ quality: 90 })
-      .toBuffer();
+    const raw = ((await res.json()) as { urls?: { raw?: string } }).urls?.raw;
+    if (!raw) throw new Error("no image URL");
+    urls.push(sized(raw));
   } catch (err) {
-    console.warn(`  ! couldn't download photo ${p.id} (${(err as Error).message}); using a placeholder`);
-    return placeholder(p.alt);
+    errors.push(`info: ${(err as Error).message}`);
   }
+  const page = `https://unsplash.com/photos/${id}/download?force=true`;
+  try {
+    const res = await fetch(page, { headers: BROWSER_HEADERS, redirect: "manual", signal: AbortSignal.timeout(15_000) });
+    const location = res.headers.get("location");
+    if (!location) throw new Error(`HTTP ${res.status}`);
+    urls.push(sized(new URL(location, page).toString()));
+  } catch (err) {
+    errors.push(`download link: ${(err as Error).message}`);
+  }
+  return urls;
+}
+
+/** Download a demo photo, or return null (with the reasons logged) when Unsplash can't be reached. */
+async function downloadPhoto(key: PhotoKey, log: Pick<Console, "warn">): Promise<Buffer | null> {
+  const p = PHOTOS[key];
+  const errors: string[] = [];
+  for (const url of await imageUrls(p.id, errors)) {
+    try {
+      const res = await fetch(url, { headers: { ...BROWSER_HEADERS, Accept: "image/*" }, signal: AbortSignal.timeout(30_000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // Originals can be very large: shrink before the normal upload pipeline.
+      return await sharp(Buffer.from(await res.arrayBuffer()), { limitInputPixels: false })
+        .rotate()
+        .resize({ width: 1600, withoutEnlargement: true })
+        .jpeg({ quality: 90 })
+        .toBuffer();
+    } catch (err) {
+      errors.push(`${new URL(url).hostname}: ${(err as Error).message}`);
+    }
+  }
+  log.warn(`  ! couldn't download photo ${p.id} (${errors.join("; ")})`);
+  return null;
+}
+
+/**
+ * Retry demo photos that were replaced with placeholders when the demo was added (for example because
+ * Unsplash was unreachable). Runs on start-up when SEED_DEMO is on; returns how many were fixed.
+ */
+export async function repairDemoPhotos(ctx: Ctx, log: Pick<Console, "log" | "warn"> = console): Promise<number> {
+  const rows = ctx.db
+    .prepare("SELECT d.image_id, d.photo_key, i.path, i.thumb_path FROM demo_placeholders d JOIN post_images i ON i.id = d.image_id")
+    .all() as { image_id: number; photo_key: string; path: string; thumb_path: string }[];
+  if (!rows.length) return 0;
+  log.log(`Retrying ${rows.length} demo photo(s) that are placeholders…`);
+  let fixed = 0;
+  for (const row of rows) {
+    if (!(row.photo_key in PHOTOS)) continue;
+    const buf = await downloadPhoto(row.photo_key as PhotoKey, log);
+    if (!buf) continue;
+    const img = await storeImage(ctx.config, buf);
+    ctx.db.transaction(() => {
+      ctx.db
+        .prepare("UPDATE post_images SET path = ?, thumb_path = ?, width = ?, height = ? WHERE id = ?")
+        .run(img.path, img.thumbPath, img.width, img.height, row.image_id);
+      ctx.db.prepare("DELETE FROM demo_placeholders WHERE image_id = ?").run(row.image_id);
+    })();
+    await deleteImages(ctx.config, [row.path, row.thumb_path]);
+    fixed++;
+  }
+  log.log(`Demo photos: ${fixed} of ${rows.length} replaced${fixed < rows.length ? "; the rest will be retried on the next start" : ""}.`);
+  return fixed;
 }
 
 export async function seedDemo(ctx: Ctx, opts: { password: string; log?: Pick<Console, "log" | "warn"> }): Promise<void> {
@@ -144,8 +201,19 @@ export async function seedDemo(ctx: Ctx, opts: { password: string; log?: Pick<Co
 
   async function post(userId: number, caption: string, photos: PhotoKey[], tags: TagInput[]) {
     const images = [];
-    for (const key of photos) images.push(await storeImage(ctx.config, await photo(key)));
-    return createPost(ctx, userId, images, caption, tags);
+    const missing: number[] = []; // positions that got a placeholder
+    for (const [i, key] of photos.entries()) {
+      const buf = await downloadPhoto(key, log);
+      if (!buf) missing.push(i);
+      images.push(await storeImage(ctx.config, buf ?? (await placeholder(PHOTOS[key].alt))));
+    }
+    const postId = createPost(ctx, userId, images, caption, tags);
+    for (const i of missing) {
+      ctx.db
+        .prepare("INSERT INTO demo_placeholders (image_id, photo_key) SELECT id, ? FROM post_images WHERE post_id = ? AND position = ?")
+        .run(photos[i], postId, i);
+    }
+    return postId;
   }
 
   log.log("Downloading demo photos from Unsplash…");
@@ -188,5 +256,5 @@ export async function seedDemo(ctx: Ctx, opts: { password: string; log?: Pick<Co
   addComment(ctx, omar.id, p7, "ما شاء الله، اختيار رائع 👌");
   addComment(ctx, noor.id, p1, "شكرًا! الجينز من @creekdenim");
 
-  if (fallbacks) log.warn(`${fallbacks} photo(s) couldn't be downloaded and were replaced with placeholders.`);
+  if (fallbacks) log.warn(`${fallbacks} photo(s) couldn't be downloaded and were replaced with placeholders. They'll be retried on the next start while SEED_DEMO=true.`);
 }

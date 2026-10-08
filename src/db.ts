@@ -235,6 +235,13 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (hash, target)
   );
   `,
+  // 4: demo photos that couldn't be downloaded at seed time, so later starts can retry them.
+  `
+  CREATE TABLE demo_placeholders (
+    image_id  INTEGER PRIMARY KEY REFERENCES post_images(id) ON DELETE CASCADE,
+    photo_key TEXT NOT NULL
+  );
+  `,
 ];
 
 export function migrate(db: DB): void {

@@ -5,7 +5,7 @@ import { ensureAdmin } from "./bootstrap.js";
 import { config } from "./config.js";
 import type { Ctx } from "./context.js";
 import { openDb } from "./db.js";
-import { seedDemo } from "./demo.js";
+import { repairDemoPhotos, seedDemo } from "./demo.js";
 import { ClaudeImageAI } from "./ai.js";
 import { ClaudeTranslator } from "./translate.js";
 
@@ -54,6 +54,8 @@ const server = app.listen(config.port, () => {
     seedDemo(ctx, { password })
       .then(() => console.log(`Demo content added. Demo accounts (noor.styles, omar.fits, priya.wears, creekdenim) use password: ${password}`))
       .catch((err) => console.error("Adding demo content failed:", err));
+  } else if (process.env.SEED_DEMO === "true") {
+    repairDemoPhotos(ctx).catch((err) => console.error("Retrying demo photos failed:", err));
   }
 });
 

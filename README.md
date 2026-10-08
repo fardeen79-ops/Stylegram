@@ -32,7 +32,8 @@ Dune Footwear, Al Seef Leather, Saffron & Sand) are made up, and their catalogs 
 
 The demo posts use real photos from [Unsplash](https://unsplash.com), which are free to use under the
 [Unsplash License](https://unsplash.com/license). `npm run seed` downloads them, so it needs an internet
-connection. Any photo that can't be downloaded is replaced with a plain placeholder. Each post opens with an
+connection. Any photo that can't be downloaded is replaced with a plain placeholder. While
+`SEED_DEMO=true`, each restart retries the placeholders and swaps in the real photos once they download. Each post opens with an
 untagged "full look" photo, followed by single-product shots tagged at the item. The photo list, with
 Unsplash IDs and photographers, is in `src/seed.ts`.
 
